@@ -49,13 +49,13 @@ zrk今天去群里确认了一下，.pb文件是用来可视化debug的，不是
 
 - 物品：所有的武器/药品，不要从bag里找，以weapon为例，直接`aiWeaponCase[...]`（记得先用`aiWeaponCase.size() != 0`检查一下）
 
-如果要有选择的用物品，调用`vFilterWeapon(...)`（定义自找），如果找到了会把`vFilterWeaponFlag = true`
+	如果要有选择的用物品，调用`vFilterWeapon(...)`（定义自找），如果找到了会把`vFilterWeaponFlag = true`
 
-在使用的时候自动检查如果`flag == true`就用`aiFilterWeaponCase[0]`，如果是`false`就用`aiWeaponCase[0]`
+	在使用的时候自动检查如果`flag == true`就用`aiFilterWeaponCase[0]`，如果是`false`就用`aiWeaponCase[0]`
 
 - 行为：详见`struct vAiBehavior`定义，移动、转身、射击的时候需要两个angle，嗑药、发消息的时候需要两个int类
 
-全局变量`aiBehavior`里面存当前的行为（作为决策和执行的接口），前几帧的行为用`aiPrevAct[...]`得到
+	全局变量`aiBehavior`里面存当前的行为（作为决策和执行的接口），前几帧的行为用`aiPrevAct[...]`得到
 
 - 敌人：向量`aiEnemy`里面存敌人的id（按优先级高到低），要某个敌人的信息用`aiKV[id]`得到敌人的info struct
 
@@ -73,19 +73,19 @@ zrk今天去群里确认了一下，.pb文件是用来可视化debug的，不是
 
 - `shoot()`和`move()`函数的参数是相对于`info.self.view\_angle`的相对角度，`info.self.move\_angle`好像并没有卵用
 
-`aiBehavior`结构体里面存的也都是相对于`view\_angle`的角度
+	`aiBehavior`结构体里面存的也都是相对于`view\_angle`的角度
 
-所以如果得到的是绝对角度的话，记得减去`info.self.view\_angle`再对`aiBehavior`进行赋值
+	所以如果得到的是绝对角度的话，记得减去`info.self.view\_angle`再对`aiBehavior`进行赋值
 
-比如`aiKV[id].rel\_polar\_pos.angle`、`info.items[i].polar\_pos.angle`都是相对角度，直接当`aiBehavior`里面参数就可以
+	比如`aiKV[id].rel\_polar\_pos.angle`、`info.items[i].polar\_pos.angle`都是相对角度，直接当`aiBehavior`里面参数就可以
 
-而自己算出来的毒圈中心角度是绝对角度，需要减去`info.self.view\_angle`
+	而自己算出来的毒圈中心角度是绝对角度，需要减去`info.self.view\_angle`
 
 - 用xy坐标算角度的时候建议用`atan2(dy, dx)`，注意参数顺序不要反
 
-并且得到的是弧度制，记得`*180/M_PI`
+	并且得到的是弧度制，记得`*180/M_PI`
 
-我在通用函数里面也给了计算距离和角度的函数`vCalcDist()`和`vCalcAngle()`
+	我在通用函数里面也给了计算距离和角度的函数`vCalcDist()`和`vCalcAngle()`
 
 - 还有不要写`double == double`这些东西应该不用多说
 
