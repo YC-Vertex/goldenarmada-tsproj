@@ -15,9 +15,10 @@ Private repo of team Golden Armada in THU AI Project
 
 
 
+
 ## 20190411 - zyc: 
 
-### 主要负责把框架写好了，但是逻辑用的都是最简单的逻辑
+主要负责把框架写好了，但是逻辑用的都是最简单的逻辑
 
 目前主要工作是改逻辑，然后调参数、测试什么的
 
@@ -25,7 +26,7 @@ Private repo of team Golden Armada in THU AI Project
 
 简单说一下，现在的debug信息从文件输出，文件会在platform/playback底下
 
-把所有debug信息都注释掉了（因为昨天晚上传到网站上），如果要改回来，直接搜索"Debug Info"，然后把注释一个一个去掉
+把所有debug信息都注释掉了（因为昨天晚上传到网站上），如果要改回来，直接搜索`Debug Info`，然后把注释一个一个去掉
 
 zrk今天去群里确认了一下，.pb文件是用来可视化debug的，不是用来看的，我之前理解错了
 
@@ -37,41 +38,38 @@ zrk今天去群里确认了一下，.pb文件是用来可视化debug的，不是
 
 2. 确定ai的行为和参数，写了几个函数，写策略的时候直接改函数就可以，如果要改主函数里面的东西或者要其它接口，记得说一声
 
-3. 按照行为和参数执行，这个基本确定好不用再改了
-其它的就是一些跳伞操作（前面）和后处理（后面）
+3. 按照行为和参数执行，这个基本确定好不用再改了，其它的就是一些跳伞操作（前面）和后处理（后面）
 
 ### 关于程序这么长我该去哪找：
 
-- 一些标注：可以直接搜索"Temporary" "Unfinished" "Unused" "Debug Info"
+- 一些标注：可以直接搜索`Temporary` `Unfinished` `Unused` `Debug Info`
 
-分别代表暂时的逻辑（简单逻辑或者不确定好不好用的）、没写完的代码（可能会编译不过的）、没用到的代码、Debug输出信息
+	分别代表暂时的逻辑（简单逻辑或者不确定好不好用的）、没写完的代码（可能会编译不过的）、没用到的代码、Debug输出信息
 
-- 一些函数和全局变量的分类："item queue" "ai behavior" "ai decision" "ai evaluation" "ai audio" "ai sight"
+- 一些函数和全局变量的分类：`item queue` `ai behavior` `ai decision` `ai evaluation` `ai audio` `ai sight`
 
-声明和定义附近都会有这些分类作为注释
+	声明和定义附近都会有这些分类作为注释
 
-分别代表物品的优先级队列、ai的行为（主要是结构体定义）、ai的决策（各种函数）、
+	分别代表物品的优先级队列、ai的行为（主要是结构体定义）、ai的决策（各种函数）、ai对局势的判断（没用）、ai对听觉（暂时没用，之后写radio在这部分）、ai的视觉（处理敌人也在这部分）
 
-ai对局势的判断（没用）、ai对听觉（暂时没用，之后写radio在这部分）、ai的视觉（处理敌人也在这部分）
+- 一些命名规则：全局常量、函数、struct、enum以`v`开头，全局变量以`ai`开头
 
-- 一些命名规则：全局常量、函数、struct、enum以"v"开头，全局变量以"ai"开头
-
-- 一些索引："item"声明(50 ~ 80)，"ai"声明(80 ~ 160)，主程序(160 ~ 380)，通用函数(390 ~ 410)，"item"定义(420 ~ 670)，"ai"定义(680 ~ 1100)
+- 一些索引：`item`声明(50 ~ 80)，`ai`声明(80 ~ 160)，主程序(160 ~ 380)，通用函数(390 ~ 410)，`item`定义(420 ~ 670)，`ai`定义(680 ~ 1100)
 
 
 ### 关于现在可以调用什么：
 
-- 物品：所有的武器/药品，不要从bag里找，以weapon为例，直接aiWeaponCase[...]（记得先用aiWeaponCase.size() != 0检查一下）
+- 物品：所有的武器/药品，不要从bag里找，以weapon为例，直接`aiWeaponCase[...]`（记得先用`aiWeaponCase.size() != 0`检查一下）
 
-如果要有选择的用物品，调用vFilterWeapon(...)（定义自找），如果找到了会把vFilterWeaponFlag = true
+	如果要有选择的用物品，调用`vFilterWeapon(...)`（定义自找），如果找到了会把`vFilterWeaponFlag = true`
 
-在使用的时候自动检查如果flag == true就用aiFilterWeaponCase[0]，如果是false就用aiWeaponCase[0]
+	在使用的时候自动检查如果`flag == true`就用`aiFilterWeaponCase[0]`，如果是`false`就用`aiWeaponCase[0]`
 
-- 行为：详见struct vAiBehavior定义，移动、转身、射击的时候需要两个angle，嗑药、发消息的时候需要两个int类
+- 行为：详见`struct vAiBehavior`定义，移动、转身、射击的时候需要两个angle，嗑药、发消息的时候需要两个int类
 
-全局变量aiBehavior里面存当前的行为（作为决策和执行的接口），前几帧的行为用aiPrevAct[...]得到
+	全局变量`aiBehavior`里面存当前的行为（作为决策和执行的接口），前几帧的行为用`aiPrevAct[...]`得到
 
-- 敌人：向量aiEnemy里面存敌人的id（按优先级高到低），要某个敌人的信息用aiKV[id]得到敌人的info struct
+- 敌人：向量`aiEnemy`里面存敌人的id（按优先级高到低），要某个敌人的信息用`aiKV[id]`得到敌人的info struct
 
 ### 关于这两天打架的一些结果：
 
@@ -85,23 +83,23 @@ ai对局势的判断（没用）、ai对听觉（暂时没用，之后写radio�
 
 ### 关于这两天Debug的一些结果：
 
-- shoot()和move()函数的参数是相对于info.self.view\_angle的相对角度，info.self.move\_angle好像并没有卵用
+- `shoot()`和`move()`函数的参数是相对于`info.self.view\_angle`的相对角度，`info.self.move\_angle`好像并没有卵用
 
-aiBehavior结构体里面存的也都是相对于view\_angle的角度
+	`aiBehavior`结构体里面存的也都是相对于`view\_angle`的角度
 
-所以如果得到的是绝对角度的话，记得减去info.self.view\_angle再对aiBehavior进行赋值
+	所以如果得到的是绝对角度的话，记得减去`info.self.view\_angle`再对`aiBehavior`进行赋值
 
-比如aiKV[id].rel\_polar\_pos.angle、info.items[i].polar\_pos.angle都是相对角度，直接当aiBehavior里面参数就可以
+	比如`aiKV[id].rel\_polar\_pos.angle`、`info.items[i].polar\_pos.angle`都是相对角度，直接当`aiBehavior`里面参数就可以
 
-而自己算出来的毒圈中心角度是绝对角度，需要减去info.self.view\_angle
+	而自己算出来的毒圈中心角度是绝对角度，需要减去`info.self.view\_angle`
 
-- 用xy坐标算角度的时候建议用atan2(dy, dx)，注意参数顺序不要反
+- 用xy坐标算角度的时候建议用`atan2(dy, dx)`，注意参数顺序不要反
 
-并且得到的是弧度制，记得*180/M_PI
+	并且得到的是弧度制，记得`*180/M_PI`
 
-我在通用函数里面也给了计算距离和角度的函数vCalcDist()和vCalcAngle()
+	我在通用函数里面也给了计算距离和角度的函数`vCalcDist()`和`vCalcAngle()`
 
-- 还有不要写double == double这些东西应该不用多说
+- 还有不要写`double == double`这些东西应该不用多说
 
 ### 关于实现一些逻辑的初级想法：
 
