@@ -35,9 +35,12 @@ extern PlayerInfo info;
 SelfInfo aiPrevSelf;
 
 // Debug Info
+// 有的版本可能会编译不过，自行考虑加在主函数里面
+/*
 char * fname;
-sprintf("./playback/%d.txt", fname, AI_VOCATION)
+sprintf(fname, "./playback/%d.txt", AI_VOCATION);
 std::fstream f(fname, std::ios::out);
+*/
 
 
 
@@ -124,8 +127,8 @@ void vUpdateEvaluation();
 // Unused
 void vAudioHandler();
 void vRadioHandler(Sound);
-void vRadioEncode();
-void vRadioDecode();
+//void vRadioEncode();
+//void vRadioDecode();
 
 
 
@@ -240,7 +243,7 @@ void play_game() {
 
 
     // stage 0: evaluate battle field status
-    vUpdateEvaluation();
+    //vUpdateEvaluation();
     vAudioHandler();
     vSightHandler();
 
@@ -582,7 +585,7 @@ void vFilterWeapon(int range) {
 	for (int i = 0; i < aiWeaponCase.size(); ++i) {
         ITEM w = aiWeaponCase[i].type;
         if (ITEM_DATA[w].range > range) {
-            aifilterWeaponFlag = true;
+            aiFilterWeaponFlag = true;
             aiFilterWeaponCase.push_back(aiWeaponCase[i]);
         }
 	}
@@ -745,6 +748,7 @@ bool vLoseHp() {
 
     double healthTH = 30.0 - (aiArmor - VEST_1) * 10.0; // low health threshold
     double healthTG = info.self.hp_limit * 0.85;        // full health threshold
+	double angleDT = 35.0;
 
     if (info.self.hp < healthTH) {
         // 如果在作战状态，则Retreat
