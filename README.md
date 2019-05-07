@@ -4,6 +4,26 @@ Private repo of team Golden Armada in THU AI Project
 
 ---
 
+## 20190508 01:00 - zyc:
+
+### 整理地图、建图
+
+地图带标注图片见`map\_\*.jpg`，地图带结点标注见`map\_\*\_node.jpg`，原文件见`map\_\*.sldprt`
+
+地图结点位置和邻接矩阵定义见`0\_map.txt`
+
+共有9种地形，分别是`beach` `city` `farmland` `grass` `hill` `pool` `roadA` `roadB` `forest`，其中：
+
+- `beach` `city` `hill`：障碍物复杂，建图建结点寻路
+
+- `farmland` `pool`：有少量挡路障碍物（分别为1个和3个），直接走，判断是否与已知障碍物有交点；如果需要建图叫我我再来弄
+
+- `grass` `roadA` `roadB` `forest`：没有树以外的挡路障碍物，直接横跨，需要加上如果没有移动则改变移动角度的逻辑；其中`forest`我连地图都懒的画了
+
+这一版先大致这样，有bug的话直接改了开branch，如果要改路线以达到更不容易被发现等战术效果，下一个版本再说（甩锅
+
+---
+
 ## 20190412 20:30 - zyc:
 
 ### merge
