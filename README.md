@@ -8,9 +8,9 @@ Private repo of team Golden Armada in THU AI Project
 
 ### 整理地图、建图
 
-地图带标注图片见`map\_\*.jpg`，地图带结点标注见`map\_\*\_node.jpg`，原文件见`map\_\*.sldprt`
+地图带标注图片见`map_*.jpg`，地图带结点标注见`map_*_node.jpg`，原文件见`map_*.sldprt`
 
-地图结点位置和邻接矩阵定义见`0\_map.txt`
+地图结点位置和邻接矩阵定义见`0_map.txt`
 
 共有9种地形，分别是`beach` `city` `farmland` `grass` `hill` `pool` `roadA` `roadB` `forest`，其中：
 
