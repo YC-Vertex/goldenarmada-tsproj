@@ -2,6 +2,15 @@
 
 Private repo of team Golden Armada in THU AI Project
 
+
+---
+
+## 20190509 16:00 - zyc:
+
+### 加入GAMEPLAYMODE
+
+主要是用来调试用，测试的东西直接放在主函数`if (MODE == TEST) { ... }`里面就可以了，不需要改外面的东西了
+
 ---
 
 ## 20190508 01:00 - zyc:

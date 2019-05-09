@@ -13,9 +13,22 @@
 
 // 0 - MEDIC, 1 - SIGNALMAN, 2 - HACK, 3 - SNIPER
 #define AI_VOCATION MEDIC 
+// Debug Info
+std::fstream f("./playback/1.txt", std::ios::out);
 
 #define REFRESH_PERIOD 5
 #define REFRESH_PHASE 4
+
+enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
+const GAMEPLAYMODE MODE = TEST;
+
+/*
+const XYPosition landing_point = {
+    start_pos.x * 0.35 + over_pos.x * 0.65 + rand() % 20, 
+    start_pos.y * 0.35 + over_pos.y * 0.65 + rand() % 20
+};
+*/
+const XYPosition landing_point = { 350 + rand() % 20, 350 + rand() % 20 };
 
 using namespace ts20;
 
@@ -33,14 +46,6 @@ extern std::vector<int> teammates;
 extern int frame;
 extern PlayerInfo info;
 SelfInfo aiPrevSelf;
-
-// Debug Info
-// 有的版本可能会编译不过，自行考虑加在主函数里面
-/*
-char * fname;
-sprintf(fname, "./playback/%d.txt", AI_VOCATION);
-std::fstream f(fname, std::ios::out);
-*/
 
 
 
@@ -168,57 +173,50 @@ void play_game() {
 	update_info();
 
     // Debug Info
-	/*
-	f << "frame (" << frame << ") hp (" << info.self.hp
-		<< ") view_angle (" << info.self.view_angle << ") move_angle (" << vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos)
-		<< ") \npos (" << info.self.xy_pos.x << " " << info.self.xy_pos.y
-		<< ") poison (" << info.poison.next_center.x << " " << info.poison.next_center.y 
-		<< ") poison_dist (" << sqrt(vCalcDist(info.self.xy_pos, info.poison.next_center)) << ") " << std::endl;
-	*/
+    if (MODE) {
+        f << "frame (" << frame << ") hp (" << info.self.hp
+            << ") view_angle (" << info.self.view_angle << ") move_angle (" << vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos)
+            << ") \npos (" << info.self.xy_pos.x << " " << info.self.xy_pos.y
+            << ") poison (" << info.poison.next_center.x << " " << info.poison.next_center.y 
+            << ") poison_dist (" << sqrt(vCalcDist(info.self.xy_pos, info.poison.next_center)) << ") " << std::endl;
+	}
+    // Debug Info End
 
     // check weapon and med queue
     if (frame % REFRESH_PERIOD == REFRESH_PHASE) {
         vCheckItemStatus();
 
 		// Debug Info
-		/*
-		f << "Bag: \n";
-		for (int i = 0; i < info.self.bag.size(); ++i) {
-			Item b = info.self.bag[i];
-			f << "\tItem (id: " << b.item_ID << "): "
-				<< "type (" << b.type << ") durability (" << b.durability << ")\n";
-		}
-		f << "Weapon Case: \n";
-		for (int i = 0; i < aiWeaponCase.size(); ++i) {
-			Item w = aiWeaponCase[i];
-			f << "\tWeapon (type: " << w.type << "): "
-				<< "durability (" << w.durability << ")\n";
-		}
-		f << "Med Case: \n";
-		if (aiMedCase.size() == 0) {
-			f << "None\n";
-		} else {
-			for (int i = 0; i < aiMedCase.size(); ++i) {
-				Item m = aiMedCase[i];
-				f << "\tMed (type: " << m.type << "): "
-					<< "durability (" << m.durability << ")\n";
-			}
-		}
-		*/
+        if (MODE) {
+            f << "Bag: \n";
+            for (int i = 0; i < info.self.bag.size(); ++i) {
+                Item b = info.self.bag[i];
+                f << "\tItem (id: " << b.item_ID << "): "
+                    << "type (" << b.type << ") durability (" << b.durability << ")\n";
+            }
+            f << "Weapon Case: \n";
+            for (int i = 0; i < aiWeaponCase.size(); ++i) {
+                Item w = aiWeaponCase[i];
+                f << "\tWeapon (type: " << w.type << "): "
+                    << "durability (" << w.durability << ")\n";
+            }
+            f << "Med Case: \n";
+            if (aiMedCase.size() == 0) {
+                f << "None\n";
+            } else {
+                for (int i = 0; i < aiMedCase.size(); ++i) {
+                    Item m = aiMedCase[i];
+                    f << "\tMed (type: " << m.type << "): "
+                        << "durability (" << m.durability << ")\n";
+                }
+            }
+        }
+        // Debug Info End
     }
     
     // landing
 	if (frame == 0) {
 		srand(time(nullptr) + teammates[0]);
-		/*
-		XYPosition landing_point = {
-			start_pos.x * 0.35 + over_pos.x * 0.65 + rand() % 20, 
-			start_pos.y * 0.35 + over_pos.y * 0.65 + rand() % 20
-		};
-		*/
-		XYPosition landing_point = {
-			350 + rand() % 20, 350 + rand() % 20
-		};
 		parachute(AI_VOCATION, landing_point);
         
         vInitWeaponPriority();
@@ -233,13 +231,28 @@ void play_game() {
 	}
 
 	// Debug Info
-	/*
-	if (info.self.status == ON_PLANE || info.self.status == JUMPING) {
-		f << "jumping" << std::endl;
-		return;
-	}
-	*/
+    if (MODE) {
+        if (info.self.status == ON_PLANE || info.self.status == JUMPING) {
+            f << "jumping" << std::endl;
+            return;
+        }
+    }
+    // Debug Info End
+    
 
+
+    // check gameplay mode
+    if (MODE == TEST) {
+        // after processing
+        vClearFilter();
+        vClearBehavior();
+        aiPrevSelf = info.self;
+        // Debug Info
+        if (MODE) f << "-\n--\n-\n";
+
+        return;
+    }
+    
 
 
     // stage 0: evaluate battle field status
@@ -271,24 +284,25 @@ void play_game() {
         aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
     
 	// Debug Info
-	/*
-	if (aiBehavior.act == Undecided) {
-		f << ">>> Warning: AI behavior undecided. <<<\n";
-	} else {
-		f << ">>> Behavior decided: ";
-		switch (aiBehavior.act) {
-			case Attack: f << "Attack <<<\n"; break;
-			case Retreat: f << "Retreat <<<\n"; break;
-			case MedSelf: f << "MedSelf <<<\n"; break;
-            case MedTeam: f << "MedTeam <<<\n"; break;
-            case Radio: f << "Radio <<<\n"; break;
-			case Pick: f << "Pick <<<\n"; break;
-            case Turn: f << "Turn <<<\n"; break;
-			case Trek: f << "Trek <<<\n"; break;
-            case Stand: f << "Stand By <<<\n"; break;
-		}
-	}
-	*/
+    if (MODE) {
+        if (aiBehavior.act == Undecided) {
+            f << ">>> Warning: AI behavior undecided. <<<\n";
+        } else {
+            f << ">>> Behavior decided: ";
+            switch (aiBehavior.act) {
+                case Attack: f << "Attack <<<\n"; break;
+                case Retreat: f << "Retreat <<<\n"; break;
+                case MedSelf: f << "MedSelf <<<\n"; break;
+                case MedTeam: f << "MedTeam <<<\n"; break;
+                case Radio: f << "Radio <<<\n"; break;
+                case Pick: f << "Pick <<<\n"; break;
+                case Turn: f << "Turn <<<\n"; break;
+                case Trek: f << "Trek <<<\n"; break;
+                case Stand: f << "Stand By <<<\n"; break;
+            }
+        }
+    }
+    // Debug Info End
 
 
 
@@ -298,7 +312,7 @@ void play_game() {
 	// No movement check
 	if (aiBehavior.act == Trek && aiPrevAct[0].act == Trek && isNoMove()) {
 		// Debug Info
-//		f << "No Movement!\n";
+		if (MODE) f << "No Movement!\n";
 		aiBehavior = aiPrevAct[0];
 		aiBehavior.view_angle = -43.21;
 		aiBehavior.move_angle = -43.21;
@@ -314,25 +328,25 @@ void play_game() {
         weapon.durability = -1;
         vUpdateWeapon(weapon);
 		// Debug Info
-//		f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
+        if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
     } else if (act == MedSelf) {
         Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
         shoot(med.type, 0);
         med.durability = -1;
         vUpdateMed(med);
 		// Debug Info
-//		f << "MedSelf: " << med.type << std::endl;
+		if (MODE) f << "MedSelf: " << med.type << std::endl;
     } else if (act == MedTeam) {
         Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
         shoot(med.type, 0, aiBehavior.target_ID);
         med.durability = -1;
         vUpdateMed(med);
 		// Debug Info
-//		f << "MedTeam: " << aiBehavior.target_ID << std::endl;
+		if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
     } else if (act == Radio) {
         radio(aiBehavior.target_ID, aiBehavior.msg);
 		// Debug Info
-//		f << "Radio: " << aiBehavior.msg << std::endl;
+		if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
     } else if (act == Retreat) {
         // Temporary 
         move(aiBehavior.view_angle + 180.0, aiBehavior.view_angle);
@@ -354,11 +368,11 @@ void play_game() {
     } else if (act == Turn) {
         move(0, aiBehavior.view_angle, NOMOVE);
 		// Debug Info
-//		f << "Turn: " << aiBehavior.view_angle << std::endl;
+		if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
     } else if (act == Trek) {
         move(aiBehavior.move_angle, aiBehavior.view_angle);
 		// Debug Info
-//		f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
+		if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
     } else {
 		;// do nothing
     }
@@ -370,7 +384,7 @@ void play_game() {
 	vClearBehavior();
     aiPrevSelf = info.self;
 	// Debug Info
-//	f << "-\n--\n-\n";
+	if (MODE) f << "-\n--\n-\n";
 
 	return;
 }
@@ -447,10 +461,11 @@ void vUpdateWeapon(Item weapon) {
     }
 
 	// Debug Info
-	/*
-    f << "Weapon Update: type (" << w << "), place (" << p
-        << "), durability (" << weapon.durability << ")\n";
-	*/
+    if (MODE) {
+        f << "Weapon Update: type (" << w << "), place (" << p
+            << "), durability (" << weapon.durability << ")\n";
+    }
+    // Debug Info End
 }
 
 void vUpdateMed(Item med) {
@@ -484,10 +499,11 @@ void vUpdateMed(Item med) {
     }
 
 	// Debug Info
-	/*
-    f << "Med Update: type (" << m << "), place (" << p
-        << "), durability (" << med.durability << ")\n";
-	*/
+    if (MODE) {
+        f << "Med Update: type (" << m << "), place (" << p
+            << "), durability (" << med.durability << ")\n";
+    }
+    // Debug Info End
 }
 
 // Temporary
@@ -721,8 +737,7 @@ bool vEncounterEnemy() {
     if (eFlag && enemyVA.value > valueTH) {
         if (info.self.attack_cd != 0) {
             // Debug Info
-//			f << "Attack cd!\n";
-            ;
+			if (MODE) f << "Attack cd!\n";
         } else {
             aiBehavior = { Attack, enemyVA.rel_polar_pos.angle, 0.0, 0, 0 };
             return true;
@@ -850,7 +865,7 @@ bool vPickItem() {
         // 如果要捡，不在范围内则Trek，在范围内则Pick
         if (pFlag) {
             // Debug Info
-//			f << "Target item: " << target.polar_pos.distance << " " << target.polar_pos.angle << std::endl;
+			if (MODE) f << "Target item: " << target.polar_pos.distance << " " << target.polar_pos.angle << std::endl;
             if (target.polar_pos.distance <= PICKUP_DISTANCE) {
                 aiBehavior = { Pick, 0, 0, target.item_ID, 0 };
             } else {
@@ -996,19 +1011,20 @@ void vSightHandler() {
 	vLostEnemy();
 
 	// Debug Info
-	/*
-	if (aiEnemy.size() != 0) {
-		f << "Enemy Queue: \n";
-		for (int i = 0; i < aiEnemy.size(); ++i) {
-			int id = aiEnemy[i];
-			f << "\tEnemy (id: " << id << "): "
-				<< "frame (" << aiKV[id].lastUpdateFrame << "), "
-				<< "priority (" << aiKV[id].priority << "), "
-				<< "rel_angle (" << aiKV[id].rel_polar_pos.angle << "), "
-				<< "rel_dist (" << aiKV[id].rel_polar_pos.distance << ")\n"; 
-		}
-	}
-	*/
+    if (MODE) {
+        if (aiEnemy.size() != 0) {
+            f << "Enemy Queue: \n";
+            for (int i = 0; i < aiEnemy.size(); ++i) {
+                int id = aiEnemy[i];
+                f << "\tEnemy (id: " << id << "): "
+                    << "frame (" << aiKV[id].lastUpdateFrame << "), "
+                    << "priority (" << aiKV[id].priority << "), "
+                    << "rel_angle (" << aiKV[id].rel_polar_pos.angle << "), "
+                    << "rel_dist (" << aiKV[id].rel_polar_pos.distance << ")\n"; 
+            }
+        }
+    }
+    // Debug Info End
 
     // process item info
 }
@@ -1080,7 +1096,7 @@ void vLostEnemy() {
 			aiEnemy.push_back(id);
 
 			// Debug Info
-//			f << "Enemy (id: " << id << ") lost in sight.\n";
+			if (MODE) f << "Enemy (id: " << id << ") lost in sight.\n";
 		}
 	}
 }
