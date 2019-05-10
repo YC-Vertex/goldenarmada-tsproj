@@ -13,22 +13,9 @@
 
 // 0 - MEDIC, 1 - SIGNALMAN, 2 - HACK, 3 - SNIPER
 #define AI_VOCATION MEDIC 
-// Debug Info
-std::fstream f("./playback/1.txt", std::ios::out);
 
 #define REFRESH_PERIOD 5
 #define REFRESH_PHASE 4
-
-enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
-const GAMEPLAYMODE MODE = TEST;
-
-/*
-const XYPosition landing_point = {
-    start_pos.x * 0.35 + over_pos.x * 0.65 + rand() % 20, 
-    start_pos.y * 0.35 + over_pos.y * 0.65 + rand() % 20
-};
-*/
-const XYPosition landing_point = { 350 + rand() % 20, 350 + rand() % 20 };
 
 using namespace ts20;
 
@@ -85,6 +72,157 @@ void vFilterWeapon(int);    // filter via weapon shooting range
 void vCheckItemStatus();	// sync with items in bag
 void vClearFilter();	// clear filter at the end of each frame
 
+
+//zms Begin
+
+const int BeachNode = 13;
+int BeachLoc[BeachNode][2] = {
+    {25,  5}, { 5, 25}, {10, 50}, { 5, 75},
+    {30, 50}, {50, 30}, {70, 10}, {90, 10},
+    {90, 50}, {70, 50}, {50, 70}, {25, 95},
+    {90, 90}
+};
+int BeachAdj[BeachNode][BeachNode] = {
+    { 0, 28, -1, -1, -1, 35, -1, -1, -1, -1, -1, -1, -1},
+    {28,  0, 26, 50, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, 26,  0, 26, 20, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, 50, 26,  0, 35, -1, -1, -1, -1, -1, -1, 28, -1},
+    {-1, -1, 20, 35,  0, 28, -1, -1, -1, -1, 28, -1, -1},
+    {35, -1, -1, -1, 28,  0, 28, -1, -1, 28, -1, -1, -1},
+    {-1, -1, -1, -1, -1, 28,  0, 20, -1, 40, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, 20,  0, 40, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, 40,  0, 20, -1, -1, -1},
+    {-1, -1, -1, -1, -1, 28, 40, -1, 20,  0, 28, -1, 44},
+    {-1, -1, -1, -1, 28, -1, -1, -1, -1, 28,  0, 35, -1},
+    {-1, -1, -1, 28, -1, -1, -1, -1, -1, -1, 35,  0, 65},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 44, -1, 65,  0}
+};
+int BeachNext[BeachNode][BeachNode] = {
+	{  0,  1,  1,  1,  5,  5,  5,  5,  5,  5,  5,  1,  5},
+	{  0,  1,  2,  3,  2,  0,  0,  0,  0,  0,  2,  3,  0},
+	{  1,  1,  2,  3,  4,  4,  4,  4,  4,  4,  4,  3,  3},
+	{  1,  1,  2,  3,  4,  4,  4,  4,  4,  4,  4, 11, 11},
+	{  5,  2,  2,  3,  4,  5,  5,  5,  5,  5, 10,  3,  5},
+	{  0,  0,  4,  4,  4,  5,  6,  6,  9,  9,  4,  4,  9},
+	{  5,  5,  5,  5,  5,  5,  6,  7,  7,  9,  9,  9,  9},
+	{  6,  6,  6,  6,  6,  6,  6,  7,  8,  6,  6,  6,  6},
+	{  9,  9,  9,  9,  9,  9,  7,  7,  8,  9,  9,  9,  9},
+	{  5,  5,  5,  5,  5,  5,  6,  6,  8,  9, 10, 10, 12},
+	{  4,  4,  4,  4,  4,  4,  9,  9,  9,  9, 10, 11,  9},
+	{  3,  3,  3,  3,  3,  3, 10, 10, 10, 10, 10, 11, 12},
+	{  9,  9, 11, 11,  9,  9,  9,  9,  9,  9,  9, 11, 12}
+};
+
+const int CityNode = 23;
+int CityLoc[CityNode][2] = {
+    { 2,  2}, {50,  5}, {98,  2}, {96, 50}, {98, 98}, {50, 95}, { 5, 50},
+    { 8, 92}, {35, 92}, {65, 92}, {92, 92},
+    {92, 68}, {65, 68}, {35, 68}, { 8, 68},
+    { 8, 32}, {35, 32}, {65, 32}, {92, 32},
+    {92,  8}, {65,  8}, {35,  8}, { 8,  8}
+};
+
+int CityAdj[CityNode][CityNode] = {
+    { 0, 48, -1, -1, -1, -1, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 16, 16, -1},
+    {-1, 48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, 48,  0, 48, -1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1},
+    {-1, -1, -1, 48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, 48,  0, -1, -1, 16, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {48, -1, -1, -1, -1, -1,  0, -1, -1, -1, -1, -1, -1, -1, 19, 19, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1,  0, 27, -1, -1, -1, -1, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, 16, -1, 27,  0, 30, -1, -1, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, 16, -1, -1, 30,  0, 27, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 27,  0, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 24,  0, 27, -1, -1, -1, -1, 45, 36, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, 27,  0, 30, -1, -1, 47, -1, 45, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, 30,  0, 27, 45, -1, 47, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, 19, 24, -1, -1, -1, -1, -1, 27,  0, 36, 45, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 45, 36,  0, 27, -1, -1, -1, -1, -1, 24},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 47, -1, 45, 27,  0, 30, -1, -1, -1, 24, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45, -1, 47, -1, -1, 30,  0, 27, -1, 24, -1, -1},
+    {-1, -1, -1, 19, -1, -1, -1, -1, -1, -1, -1, 36, 45, -1, -1, -1, -1, 27,  0, 24, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24,  0, 27, -1, -1},
+    {-1, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, 27,  0, 30, -1},
+    {-1, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, 30,  0, 27},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, -1, -1, 27,  0}
+};
+
+int CityNext [CityNode][CityNode]{
+	{  0,  1,  1,  1,  6,  6,  6,  6,  6,  6,  1,  1,  6,  6,  6,  6,  1,  1,  1,  1,  1,  1,  6},
+	{  0,  1,  2, 20, 20, 20, 21, 21, 20, 21, 20, 20, 21, 20, 21, 21, 21, 20, 20, 20, 20, 21, 21},
+	{  1,  1,  2,  3,  3,  3,  1,  1,  3,  3,  3,  3,  3,  3,  1,  1,  1,  1,  3,  3,  1,  1,  1},
+	{ 18, 18,  2,  3,  4, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 18, 18, 18, 18, 18, 18, 18, 18},
+	{  5,  3,  3,  3,  4,  5,  5,  5,  5,  5,  5,  3,  5,  5,  5,  5,  3,  3,  3,  3,  3,  3,  5},
+	{  8,  8,  9,  9,  4,  5,  8,  8,  8,  9,  9,  9,  9,  8,  8,  8,  9,  8,  9,  9,  8,  9,  8},
+	{  0, 15, 15, 14, 14, 14,  6, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15},
+	{ 14, 14, 14,  8,  8,  8, 14,  7,  8,  8,  8,  8,  8,  8, 14, 14, 14,  8,  8,  8,  8, 14, 14},
+	{  7, 13,  9,  9,  5,  5,  7,  7,  8,  9,  9,  9,  9, 13,  7, 13,  7, 13, 13, 13, 13,  7, 13},
+	{  8, 12, 10, 10,  5,  5,  8,  8,  8,  9, 10, 10, 12,  8,  8, 12, 12, 10, 12, 12, 10, 12, 12},
+	{ 11, 11, 11, 11,  9,  9,  9,  9,  9,  9, 10, 11,  9,  9,  9,  9,  9, 11, 11, 11, 11,  9,  9},
+	{ 17, 17,  3,  3,  3, 10, 12, 10, 10, 10, 10, 11, 12, 12, 12, 12, 12, 17, 18, 18, 17, 12, 12},
+	{ 13, 16, 11, 11,  9,  9, 13,  9,  9,  9,  9, 11, 12, 13, 13, 16, 16, 11, 18, 18, 11, 16, 16},
+	{ 14, 17, 12, 12,  8,  8, 14,  8,  8,  8,  8, 12, 12, 13, 14, 15, 14, 17, 17, 17, 17, 14, 15},
+	{  6, 16, 16, 13,  7,  7,  6,  7,  7,  7,  7, 13, 13, 13, 14, 15, 16, 13, 13, 13, 13, 16, 15},
+	{  6, 16, 16, 16, 13, 13,  6, 14, 13, 16, 16, 16, 16, 13, 14, 15, 16, 16, 16, 16, 16, 16, 22},
+	{ 21, 21, 21, 17, 17, 12, 15, 14, 14, 12, 12, 12, 12, 14, 14, 15, 16, 17, 17, 17, 17, 21, 15},
+	{ 20, 20, 20, 18, 18, 13, 16, 13, 13, 11, 11, 11, 11, 13, 13, 16, 16, 17, 18, 18, 20, 16, 16},
+	{ 17, 17,  3,  3,  3, 12, 17, 17, 17, 12, 11, 11, 12, 17, 17, 17, 17, 17, 18, 19, 17, 17, 17},
+	{ 20, 20, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 20, 20, 20},
+	{  1,  1,  1, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 19, 20, 21, 21},
+	{  1,  1,  1, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 20, 20, 21, 22},
+	{ 15, 21, 21, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 21, 21, 21, 22}
+};
+
+const int HillNode = 12;
+
+int HillLoc[HillNode][2] = {
+    { 0,  5}, {40, 10}, {70, 20}, {95,  5},
+    {95, 55}, {60, 55}, {25, 45}, { 5, 45},
+    { 5, 70}, { 5, 95}, {60, 95}, {95, 95}
+};
+
+int HillAdj[HillNode][HillNode] = {
+    { 0, 40, -1, 95, -1, -1, -1, 40, -1, -1, -1, -1},
+    {40,  0, 31, 56, -1, -1, 38, -1, -1, -1, -1, -1},
+    {-1, 31,  0, -1, -1, 36, -1, -1, -1, -1, -1, -1},
+    {95, 56, -1,  0, 50, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, 50,  0, 35, -1, -1, -1, -1, -1, 40},
+    {-1, -1, 36, -1, 35,  0, 36, -1, -1, -1, 40, -1},
+    {-1, 38, -1, -1, -1, 36,  0, 20, 32, -1, 61, -1},
+    {40, -1, -1, -1, -1, -1, 20,  0, 25, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, 32, 25,  0, 25, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, 25,  0, 55, -1},
+    {-1, -1, -1, -1, -1, 40, 61, -1, -1, 55,  0, 35},
+    {-1, -1, -1, -1, 40, -1, -1, -1, -1, -1, 35,  0}
+};
+
+int HillNext[HillNode][HillNode] = {
+	{  0,  1,  1,  3,  7,  7,  7,  7,  7,  7,  7,  7},
+	{  0,  1,  2,  3,  2,  2,  6,  6,  6,  6,  6,  6},
+	{  1,  1,  2,  1,  5,  5,  1,  1,  1,  1,  5,  5},
+	{  0,  1,  1,  3,  4,  4,  1,  1,  1,  1,  4,  4},
+	{  5,  5,  5,  3,  4,  5,  5,  5,  5,  5,  5, 11},
+	{  6,  2,  2,  4,  4,  5,  6,  6,  6,  6, 10,  4},
+	{  7,  1,  1,  1,  5,  5,  6,  7,  8,  8, 10, 10},
+	{  0,  6,  6,  6,  6,  6,  6,  7,  8,  8,  6,  6},
+	{  7,  6,  6,  6,  6,  6,  6,  7,  8,  9,  9,  9},
+	{  8,  8,  8,  8,  8,  8,  8,  8,  8,  9, 10, 10},
+	{  6,  6,  5,  5,  5,  5,  6,  6,  9,  9, 10, 11},
+	{ 10, 10,  4,  4,  4,  4, 10, 10, 10, 10, 10, 11}
+};
+
+int GetAreaId(XYPosition CurPosition);
+
+double GetMoveAngle(XYPosition CurPosition, XYPosition TargetPosition);
+
+double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition,int id);
+
+double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int cur_id, int tar_id);
+
+
+
+//zms End
 
 
 // ai behavior
@@ -173,50 +311,57 @@ void play_game() {
 	update_info();
 
     // Debug Info
-    if (MODE) {
-        f << "frame (" << frame << ") hp (" << info.self.hp
-            << ") view_angle (" << info.self.view_angle << ") move_angle (" << vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos)
-            << ") \npos (" << info.self.xy_pos.x << " " << info.self.xy_pos.y
-            << ") poison (" << info.poison.next_center.x << " " << info.poison.next_center.y 
-            << ") poison_dist (" << sqrt(vCalcDist(info.self.xy_pos, info.poison.next_center)) << ") " << std::endl;
-	}
-    // Debug Info End
+	/*
+	f << "frame (" << frame << ") hp (" << info.self.hp
+		<< ") view_angle (" << info.self.view_angle << ") move_angle (" << vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos)
+		<< ") \npos (" << info.self.xy_pos.x << " " << info.self.xy_pos.y
+		<< ") poison (" << info.poison.next_center.x << " " << info.poison.next_center.y 
+		<< ") poison_dist (" << sqrt(vCalcDist(info.self.xy_pos, info.poison.next_center)) << ") " << std::endl;
+	*/
 
     // check weapon and med queue
     if (frame % REFRESH_PERIOD == REFRESH_PHASE) {
         vCheckItemStatus();
 
 		// Debug Info
-        if (MODE) {
-            f << "Bag: \n";
-            for (int i = 0; i < info.self.bag.size(); ++i) {
-                Item b = info.self.bag[i];
-                f << "\tItem (id: " << b.item_ID << "): "
-                    << "type (" << b.type << ") durability (" << b.durability << ")\n";
-            }
-            f << "Weapon Case: \n";
-            for (int i = 0; i < aiWeaponCase.size(); ++i) {
-                Item w = aiWeaponCase[i];
-                f << "\tWeapon (type: " << w.type << "): "
-                    << "durability (" << w.durability << ")\n";
-            }
-            f << "Med Case: \n";
-            if (aiMedCase.size() == 0) {
-                f << "None\n";
-            } else {
-                for (int i = 0; i < aiMedCase.size(); ++i) {
-                    Item m = aiMedCase[i];
-                    f << "\tMed (type: " << m.type << "): "
-                        << "durability (" << m.durability << ")\n";
-                }
-            }
-        }
-        // Debug Info End
+		/*
+		f << "Bag: \n";
+		for (int i = 0; i < info.self.bag.size(); ++i) {
+			Item b = info.self.bag[i];
+			f << "\tItem (id: " << b.item_ID << "): "
+				<< "type (" << b.type << ") durability (" << b.durability << ")\n";
+		}
+		f << "Weapon Case: \n";
+		for (int i = 0; i < aiWeaponCase.size(); ++i) {
+			Item w = aiWeaponCase[i];
+			f << "\tWeapon (type: " << w.type << "): "
+				<< "durability (" << w.durability << ")\n";
+		}
+		f << "Med Case: \n";
+		if (aiMedCase.size() == 0) {
+			f << "None\n";
+		} else {
+			for (int i = 0; i < aiMedCase.size(); ++i) {
+				Item m = aiMedCase[i];
+				f << "\tMed (type: " << m.type << "): "
+					<< "durability (" << m.durability << ")\n";
+			}
+		}
+		*/
     }
     
     // landing
 	if (frame == 0) {
 		srand(time(nullptr) + teammates[0]);
+		/*
+		XYPosition landing_point = {
+			start_pos.x * 0.35 + over_pos.x * 0.65 + rand() % 20, 
+			start_pos.y * 0.35 + over_pos.y * 0.65 + rand() % 20
+		};
+		*/
+		XYPosition landing_point = {
+			350 + rand() % 20, 350 + rand() % 20
+		};
 		parachute(AI_VOCATION, landing_point);
         
         vInitWeaponPriority();
@@ -231,28 +376,13 @@ void play_game() {
 	}
 
 	// Debug Info
-    if (MODE) {
-        if (info.self.status == ON_PLANE || info.self.status == JUMPING) {
-            f << "jumping" << std::endl;
-            return;
-        }
-    }
-    // Debug Info End
-    
+	/*
+	if (info.self.status == ON_PLANE || info.self.status == JUMPING) {
+		f << "jumping" << std::endl;
+		return;
+	}
+	*/
 
-
-    // check gameplay mode
-    if (MODE == TEST) {
-        // after processing
-        vClearFilter();
-        vClearBehavior();
-        aiPrevSelf = info.self;
-        // Debug Info
-        if (MODE) f << "-\n--\n-\n";
-
-        return;
-    }
-    
 
 
     // stage 0: evaluate battle field status
@@ -284,25 +414,24 @@ void play_game() {
         aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
     
 	// Debug Info
-    if (MODE) {
-        if (aiBehavior.act == Undecided) {
-            f << ">>> Warning: AI behavior undecided. <<<\n";
-        } else {
-            f << ">>> Behavior decided: ";
-            switch (aiBehavior.act) {
-                case Attack: f << "Attack <<<\n"; break;
-                case Retreat: f << "Retreat <<<\n"; break;
-                case MedSelf: f << "MedSelf <<<\n"; break;
-                case MedTeam: f << "MedTeam <<<\n"; break;
-                case Radio: f << "Radio <<<\n"; break;
-                case Pick: f << "Pick <<<\n"; break;
-                case Turn: f << "Turn <<<\n"; break;
-                case Trek: f << "Trek <<<\n"; break;
-                case Stand: f << "Stand By <<<\n"; break;
-            }
-        }
-    }
-    // Debug Info End
+	/*
+	if (aiBehavior.act == Undecided) {
+		f << ">>> Warning: AI behavior undecided. <<<\n";
+	} else {
+		f << ">>> Behavior decided: ";
+		switch (aiBehavior.act) {
+			case Attack: f << "Attack <<<\n"; break;
+			case Retreat: f << "Retreat <<<\n"; break;
+			case MedSelf: f << "MedSelf <<<\n"; break;
+            case MedTeam: f << "MedTeam <<<\n"; break;
+            case Radio: f << "Radio <<<\n"; break;
+			case Pick: f << "Pick <<<\n"; break;
+            case Turn: f << "Turn <<<\n"; break;
+			case Trek: f << "Trek <<<\n"; break;
+            case Stand: f << "Stand By <<<\n"; break;
+		}
+	}
+	*/
 
 
 
@@ -312,7 +441,7 @@ void play_game() {
 	// No movement check
 	if (aiBehavior.act == Trek && aiPrevAct[0].act == Trek && isNoMove()) {
 		// Debug Info
-		if (MODE) f << "No Movement!\n";
+//		f << "No Movement!\n";
 		aiBehavior = aiPrevAct[0];
 		aiBehavior.view_angle = -43.21;
 		aiBehavior.move_angle = -43.21;
@@ -328,25 +457,25 @@ void play_game() {
         weapon.durability = -1;
         vUpdateWeapon(weapon);
 		// Debug Info
-        if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
+//		f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
     } else if (act == MedSelf) {
         Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
         shoot(med.type, 0);
         med.durability = -1;
         vUpdateMed(med);
 		// Debug Info
-		if (MODE) f << "MedSelf: " << med.type << std::endl;
+//		f << "MedSelf: " << med.type << std::endl;
     } else if (act == MedTeam) {
         Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
         shoot(med.type, 0, aiBehavior.target_ID);
         med.durability = -1;
         vUpdateMed(med);
 		// Debug Info
-		if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
+//		f << "MedTeam: " << aiBehavior.target_ID << std::endl;
     } else if (act == Radio) {
         radio(aiBehavior.target_ID, aiBehavior.msg);
 		// Debug Info
-		if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
+//		f << "Radio: " << aiBehavior.msg << std::endl;
     } else if (act == Retreat) {
         // Temporary 
         move(aiBehavior.view_angle + 180.0, aiBehavior.view_angle);
@@ -368,11 +497,11 @@ void play_game() {
     } else if (act == Turn) {
         move(0, aiBehavior.view_angle, NOMOVE);
 		// Debug Info
-		if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
+//		f << "Turn: " << aiBehavior.view_angle << std::endl;
     } else if (act == Trek) {
         move(aiBehavior.move_angle, aiBehavior.view_angle);
 		// Debug Info
-		if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
+//		f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
     } else {
 		;// do nothing
     }
@@ -384,7 +513,7 @@ void play_game() {
 	vClearBehavior();
     aiPrevSelf = info.self;
 	// Debug Info
-	if (MODE) f << "-\n--\n-\n";
+//	f << "-\n--\n-\n";
 
 	return;
 }
@@ -461,11 +590,10 @@ void vUpdateWeapon(Item weapon) {
     }
 
 	// Debug Info
-    if (MODE) {
-        f << "Weapon Update: type (" << w << "), place (" << p
-            << "), durability (" << weapon.durability << ")\n";
-    }
-    // Debug Info End
+	/*
+    f << "Weapon Update: type (" << w << "), place (" << p
+        << "), durability (" << weapon.durability << ")\n";
+	*/
 }
 
 void vUpdateMed(Item med) {
@@ -499,11 +627,10 @@ void vUpdateMed(Item med) {
     }
 
 	// Debug Info
-    if (MODE) {
-        f << "Med Update: type (" << m << "), place (" << p
-            << "), durability (" << med.durability << ")\n";
-    }
-    // Debug Info End
+	/*
+    f << "Med Update: type (" << m << "), place (" << p
+        << "), durability (" << med.durability << ")\n";
+	*/
 }
 
 // Temporary
@@ -737,7 +864,8 @@ bool vEncounterEnemy() {
     if (eFlag && enemyVA.value > valueTH) {
         if (info.self.attack_cd != 0) {
             // Debug Info
-			if (MODE) f << "Attack cd!\n";
+//			f << "Attack cd!\n";
+            ;
         } else {
             aiBehavior = { Attack, enemyVA.rel_polar_pos.angle, 0.0, 0, 0 };
             return true;
@@ -757,7 +885,7 @@ bool vEncounterEnemy() {
     return (aiBehavior.act != Undecided);
 }
 
-// 当掉血时（现在这里时当血量过低时）
+// 当掉血时（现在这里时当血量过低时）//
 bool vLoseHp() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
@@ -826,7 +954,9 @@ bool vRunPoison() {
     if (isPoison) {
 		double alpha = (frame > 300 && frame < 1000) ? 0.3 : 0.6;
 		double r = info.poison.next_radius * alpha;
-		double mAngle = vCalcAngle(info.poison.next_center, info.self.xy_pos) - info.self.view_angle;
+		double zms_Angle = GetMoveAngle(info.self.xy_pos, info.poison.next_center);
+		// zms_Angle = vCalcAngle(info.poison.next_center,info.self.xy_pos);
+		double mAngle = zms_Angle - info.self.view_angle;
 		double vAngle = mAngle;
 		if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r) {
 			aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
@@ -865,7 +995,7 @@ bool vPickItem() {
         // 如果要捡，不在范围内则Trek，在范围内则Pick
         if (pFlag) {
             // Debug Info
-			if (MODE) f << "Target item: " << target.polar_pos.distance << " " << target.polar_pos.angle << std::endl;
+//			f << "Target item: " << target.polar_pos.distance << " " << target.polar_pos.angle << std::endl;
             if (target.polar_pos.distance <= PICKUP_DISTANCE) {
                 aiBehavior = { Pick, 0, 0, target.item_ID, 0 };
             } else {
@@ -881,7 +1011,7 @@ bool vPickItem() {
     return (aiBehavior.act != Undecided);
 }
 
-// 在周围随便走走
+// 在周围随便走走//
 bool vWalkAround() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
@@ -894,7 +1024,7 @@ bool vWalkAround() {
         aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
         return true;
     } else {
-        // 如果离毒中心太近就向外走一点
+        // 如果离毒中心太近就向外走一点//
         aiBehavior = { Trek, mAngle - angleDT, vAngle - angleDT, 0, 0 };
         return true;
     }
@@ -1011,20 +1141,19 @@ void vSightHandler() {
 	vLostEnemy();
 
 	// Debug Info
-    if (MODE) {
-        if (aiEnemy.size() != 0) {
-            f << "Enemy Queue: \n";
-            for (int i = 0; i < aiEnemy.size(); ++i) {
-                int id = aiEnemy[i];
-                f << "\tEnemy (id: " << id << "): "
-                    << "frame (" << aiKV[id].lastUpdateFrame << "), "
-                    << "priority (" << aiKV[id].priority << "), "
-                    << "rel_angle (" << aiKV[id].rel_polar_pos.angle << "), "
-                    << "rel_dist (" << aiKV[id].rel_polar_pos.distance << ")\n"; 
-            }
-        }
-    }
-    // Debug Info End
+	/*
+	if (aiEnemy.size() != 0) {
+		f << "Enemy Queue: \n";
+		for (int i = 0; i < aiEnemy.size(); ++i) {
+			int id = aiEnemy[i];
+			f << "\tEnemy (id: " << id << "): "
+				<< "frame (" << aiKV[id].lastUpdateFrame << "), "
+				<< "priority (" << aiKV[id].priority << "), "
+				<< "rel_angle (" << aiKV[id].rel_polar_pos.angle << "), "
+				<< "rel_dist (" << aiKV[id].rel_polar_pos.distance << ")\n"; 
+		}
+	}
+	*/
 
     // process item info
 }
@@ -1096,7 +1225,7 @@ void vLostEnemy() {
 			aiEnemy.push_back(id);
 
 			// Debug Info
-			if (MODE) f << "Enemy (id: " << id << ") lost in sight.\n";
+//			f << "Enemy (id: " << id << ") lost in sight.\n";
 		}
 	}
 }
@@ -1115,3 +1244,315 @@ void vCalcEnemyPriority(vAiInfo & ai) {
 	ai.priority = ai.value - ai.threat;
 }
 
+
+//zms Begin
+
+int GetAreaId(XYPosition CurPosition) {
+	int _x = CurPosition.x;
+	int _y = CurPosition.y;
+	int q_x = _x / 100 , r_x = _x % 100;
+	int q_y = _y / 100 , r_y = _y % 100;
+	int id = q_y * 10 + r_x;
+	return id;
+}
+
+double GetMoveAngle(XYPosition CurPosition, XYPosition TargetPosition) {
+	// directly
+	if(false) {
+		return vCalcAngle(TargetPosition,CurPosition);
+	}
+	int cur_id = GetAreaId(CurPosition);
+	int tar_id = GetAreaId(TargetPosition);
+	if(cur_id == tar_id)
+		return GetMoveAngle_small(CurPosition,TargetPosition,cur_id);
+	else
+		return GetMoveAngle_big(CurPosition,TargetPosition,cur_id,tar_id);
+
+}
+
+double zms_dis(double x1,double y1,double x2,double y2) {
+	x1-=x2;
+	y1-=y2;
+	return sqrt(x1*x1+y1*y1);
+}
+
+int get_BeachNodeId(double cur_x,double cur_y) {
+	double min_dis = 1e9; //inf
+	int id = -1;
+	for(int i = 0; i < BeachNode; ++i) {
+		double dis = zms_dis(cur_x,cur_y,BeachLoc[i][0],BeachLoc[i][1]);
+		if(dis < min_dis) id = i, min_dis = dis;
+	}
+	return id;
+}
+
+int get_CityNodeId(double cur_x,double cur_y) {
+	double min_dis = 1e9; //inf
+	int id = -1;
+	for(int i = 0; i < CityNode; ++i) {
+		double dis = zms_dis(cur_x,cur_y,CityLoc[i][0],CityLoc[i][1]);
+		if(dis < min_dis) id = i, min_dis = dis;
+	}
+	return id;
+}
+
+int get_HillNodeId(double cur_x,double cur_y) {
+	double min_dis = 1e9; //inf
+	int id = -1;
+	for(int i = 0; i < HillNode; ++i) {
+		double dis = zms_dis(cur_x,cur_y,HillLoc[i][0],HillLoc[i][1]);
+		if(dis < min_dis) id = i, min_dis = dis;
+	}
+	return id;
+}
+
+double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition,int id) {
+	int delta_x = id % 10 * 100;
+	int delta_y = id / 10 * 100;
+	
+	double cur_x = CurPosition.x - delta_x;
+	double cur_y = CurPosition.y - delta_y;
+	XYPosition Cur;
+	Cur.x = cur_x;
+	Cur.y = cur_y;
+
+	double tar_x = TargetPosition.x - delta_x;
+	double tar_y = TargetPosition.y - delta_y;
+	XYPosition Tar;
+	Tar.x = tar_x;
+	Tar.y = tar_y;
+
+	AREA type = MAP[id];
+
+	if(type == GRASS
+	|| type == ROADA
+	|| type == ROADB
+	|| type == FOREST) {
+		return vCalcAngle(Tar,Cur);
+	}
+
+	if(type == FARMLAND
+	|| type == POOL) {
+		return vCalcAngle(Tar,Cur);
+	}
+
+	if(type == BEACH) {
+		int cur_BeachNodeId = get_BeachNodeId(cur_x,cur_y);
+		int tar_BeachNodeId = get_BeachNodeId(tar_x,tar_y);
+		XYPosition node[BeachNode];
+		for(int i = 0; i < BeachNode; ++i)
+			node[i].x = BeachLoc[i][0], node[i].y = BeachLoc[i][1];
+		if (BeachLoc[cur_BeachNodeId][tar_BeachNodeId] != -1) {
+			return vCalcAngle(Tar, Cur);
+		}
+		else {
+			return vCalcAngle(node[BeachNext[cur_BeachNodeId][tar_BeachNodeId]], Cur);
+		}
+	}
+
+	if(type == CITY) {
+		int cur_CityNodeId = get_CityNodeId(cur_x,cur_y);
+		int tar_CityNodeId = get_CityNodeId(tar_x,tar_y);
+		XYPosition node[CityNode];
+		for(int i = 0; i < CityNode; ++i)
+			node[i].x = (double)CityLoc[i][0], node[i].y = (double)CityLoc[i][1];
+		if(CityLoc[cur_CityNodeId][tar_CityNodeId] != -1)
+			return vCalcAngle(Tar,Cur);
+		else
+			return vCalcAngle(node[CityNext[cur_CityNodeId][tar_CityNodeId]],Cur);
+
+	}
+
+	if(type == HILL) {
+		int cur_HillNodeId = get_HillNodeId(cur_x,cur_y);
+		int tar_HillNodeId = get_HillNodeId(tar_x,tar_y);
+		XYPosition node[HillNode];
+		for(int i = 0; i < HillNode; ++i)
+			node[i].x = HillLoc[i][0], node[i].y = HillLoc[i][1];
+		
+		if(HillLoc[cur_HillNodeId][tar_HillNodeId] != -1)
+			return vCalcAngle(Tar,Cur);
+		else
+			return vCalcAngle(node[HillNext[cur_HillNodeId][tar_HillNodeId]],Cur);
+	}
+}
+
+int getAreaLevel(int id) {
+	if (id < 0 || id >=100) return -1;
+	if( MAP[id] == GRASS) return 3;
+	if( MAP[id] == ROADA) return 3;
+	if( MAP[id] == ROADB) return 3;
+	if( MAP[id] == FOREST) return 3;
+	if( MAP[id] == FARMLAND) return 2;
+	if( MAP[id] == POOL) return 2;
+	if( MAP[id] == BEACH) return 1;
+	if( MAP[id] == CITY) return 1;
+	if( MAP[id] == HILL) return 1;
+	return -1;
+}
+
+int max(int x, int y) {
+	return x > y ? x : y;
+}
+
+double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int cur_id, int tar_id) {
+	int cur_x = cur_id % 10;
+	int cur_y = cur_id / 10;
+	int tar_x = tar_id % 10;
+	int tar_y = tar_id / 10;
+	int len = abs(cur_x - tar_x) + abs(cur_y - tar_y);
+	if(len == 1) {
+		return vCalcAngle(TargetPosition,CurPosition);
+	}
+	XYPosition O;
+	O.x = 0;
+	O.y = 0;
+	XYPosition Right;
+	Right.x = 1;
+	Right.y = 0;
+	XYPosition Up_Right;
+	Up_Right.x = 1;
+	Up_Right.y = 1;
+	XYPosition Down_Right;
+	Down_Right.x = 1;
+	Down_Right.y = -1;
+	XYPosition Up;
+	Up.x = 0;
+	Up.y = 1;
+	XYPosition Up_Left;
+	Up_Left.x = -1;
+	Up_Left.y = 1;
+	XYPosition Left;
+	Left.x = -1;
+	Left.y = 0;
+	XYPosition Down_Left;
+	Down_Left.x = -1;
+	Down_Left.y = -1;
+	XYPosition Down;
+	Down.x = 0;
+	Down.y = -1;
+
+	if( cur_x <= tar_x && cur_y == tar_y) {
+		int cur_right = cur_id + 1;
+		int cur_up_right = cur_id + 11;
+		int cur_down_right = cur_id - 9;
+		int v_right = getAreaLevel(cur_right);
+		int v_up_right = getAreaLevel(cur_up_right);
+		int v_down_right = getAreaLevel(cur_down_right);
+
+		int mx = max(v_right, max(v_up_right, v_down_right));
+		if(v_right == mx) return vCalcAngle(Right,O);
+		if(v_up_right == mx) return vCalcAngle(Up_Right,O);
+		if(v_down_right == mx) return vCalcAngle(Down_Right,O);
+
+	}
+	
+	if( cur_x >= tar_x && cur_y == tar_y) {
+		int cur_left = cur_id - 1;
+		int cur_up_left = cur_id + 9;
+		int cur_down_left = cur_id - 11;
+		int v_left = getAreaLevel(cur_left);
+		int v_up_left = getAreaLevel(cur_up_left);
+		int v_down_left = getAreaLevel(cur_down_left);
+
+		int mx = max(v_left, max(v_up_left, v_down_left));
+		if(v_left == mx) return vCalcAngle(Left,O);
+		if(v_up_left == mx) return vCalcAngle(Up_Left,O);
+		if(v_down_left == mx) return vCalcAngle(Down_Left,O);
+
+	}
+	
+	if( cur_x == tar_x && cur_y <= tar_y) {
+		int cur_up = cur_id + 10;
+		int cur_up_right = cur_id + 11;
+		int cur_up_left = cur_id + 9;
+		int v_up = getAreaLevel(cur_up);
+		int v_up_right = getAreaLevel(cur_up_right);
+		int v_up_left = getAreaLevel(cur_up_left);
+
+		int mx = max(v_up, max(v_up_right, v_up_left));
+		if(v_up == mx) return vCalcAngle(Up,O);
+		if(v_up_right == mx) return vCalcAngle(Up_Right,O);
+		if(v_up_left == mx) return vCalcAngle(Up_Left,O);
+
+	}
+	
+	if( cur_x == tar_x && cur_y >= tar_y) {
+		int cur_down = cur_id - 10;
+		int cur_down_left = cur_id - 11;
+		int cur_down_right = cur_id - 9;
+		int v_down = getAreaLevel(cur_down);
+		int v_down_left = getAreaLevel(cur_down_left);
+		int v_down_right = getAreaLevel(cur_down_right);
+
+		int mx = max(v_down, max(v_down_left, v_down_right));
+		if(v_down == mx) return vCalcAngle(Down,O);
+		if(v_down_left == mx) return vCalcAngle(Down_Left,O);
+		if(v_down_right == mx) return vCalcAngle(Down_Right,O);
+
+	}
+	
+	if( cur_x >= tar_x && cur_y <= tar_y) {
+		int cur_left = cur_id - 1;
+		int cur_up_left = cur_id + 9;
+		int cur_up = cur_id + 10;
+		int v_left = getAreaLevel(cur_left);
+		int v_up_left = getAreaLevel(cur_up_left);
+		int v_up = getAreaLevel(cur_up);
+
+		int mx = max(v_left, max(v_up_left, v_up));
+		if(v_left == mx) return vCalcAngle(Left,O);
+		if(v_up_left == mx) return vCalcAngle(Up_Left,O);
+		if(v_up == mx) return vCalcAngle(Up,O);
+
+	}
+	
+	if( cur_x >= tar_x && cur_y >= tar_y) {
+		int cur_left = cur_id - 1;
+		int cur_down_left = cur_id - 11;
+		int cur_down = cur_id - 10;
+		int v_left = getAreaLevel(cur_left);
+		int v_down_left = getAreaLevel(cur_down_left);
+		int v_down = getAreaLevel(cur_down);
+
+		int mx = max(v_left, max(v_down_left, v_down));
+		if(v_left == mx) return vCalcAngle(Left,O);
+		if(v_down_left == mx) return vCalcAngle(Down_Left,O);
+		if(v_down == mx) return vCalcAngle(Down,O);
+
+	}
+	
+	if( cur_x <= tar_x && cur_y <= tar_y) {
+		int cur_right = cur_id + 1;
+		int cur_up_right = cur_id + 11;
+		int cur_up = cur_id + 10;
+		int v_right = getAreaLevel(cur_right);
+		int v_up_right = getAreaLevel(cur_up_right);
+		int v_up = getAreaLevel(cur_up);
+
+		int mx = max(v_right, max(v_up_right, v_up));
+		if(v_right == mx) return vCalcAngle(Right,O);
+		if(v_up_right == mx) return vCalcAngle(Up_Right,O);
+		if(v_up == mx) return vCalcAngle(Up,O);
+
+	}
+	
+	if( cur_x <= tar_x && cur_y >= tar_y) {
+		int cur_right = cur_id + 1;
+		int cur_down = cur_id - 10;
+		int cur_down_right = cur_id - 9;
+		int v_right = getAreaLevel(cur_right);
+		int v_down = getAreaLevel(cur_down);
+		int v_down_right = getAreaLevel(cur_down_right);
+
+		int mx = max(v_right, max(v_down, v_down_right));
+		if(v_right == mx) return vCalcAngle(Right,O);
+		if(v_down == mx) return vCalcAngle(Down,O);
+		if(v_down_right == mx) return vCalcAngle(Down_Right,O);
+
+	}
+
+	return vCalcAngle(TargetPosition,CurPosition);
+}
+
+//zms End
