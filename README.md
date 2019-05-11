@@ -2,6 +2,21 @@
 
 Private repo of team Golden Armada in THU AI Project
 
+---
+
+## 20190512 00:45 - zms, zyc:
+
+### 加入寻路功能
+
+rt，寻路函数为`GetMoveAngle(cur_pos, tar_pos)`
+
+基本功能都实现了，不过要考虑一下如何和主函数中的其它指令衔接一下
+
+下一步任务是四个人合作，写Radio和职业特色（主要就是群发Radio和救人）
+
+Radio主要功能就是四个人协同，分别看四个方向（视角++），见到人集火这样
+
+下周四收代码，所以比较紧张，加油
 
 ---
 
