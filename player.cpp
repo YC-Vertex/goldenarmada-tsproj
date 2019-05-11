@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <unordered_map>
 
-#define M_PI 3.14159265358979
+#define M_PI (acos(-1.0))
 
 // 0 - MEDIC, 1 - SIGNALMAN, 2 - HACK, 3 - SNIPER
 #define AI_VOCATION MEDIC 
@@ -28,7 +28,7 @@ const XYPosition landing_point = {
     start_pos.y * 0.35 + over_pos.y * 0.65 + rand() % 20
 };
 */
-const XYPosition landing_point = { 800 + rand() % 20, 800 + rand() % 20 };
+const XYPosition landing_point = { 890, 990};
 
 using namespace ts20;
 
@@ -57,7 +57,7 @@ inline double vCalcAngle(XYPosition, XYPosition);
 
 
 
-//zms Begin
+// finding path begin (zms)
 
 const int BeachNode = 13;
 int BeachLoc[BeachNode][2] = {
@@ -197,14 +197,11 @@ int HillNext[HillNode][HillNode] = {
 };
 
 int GetAreaId(XYPosition CurPosition);
-
 double GetMoveAngle(XYPosition CurPosition, XYPosition TargetPosition);
-
-double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition,int id);
-
+double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int id);
 double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int cur_id, int tar_id);
 
-//zms End
+// finding path end (zms)
 
 
 
@@ -394,7 +391,7 @@ void play_game() {
 
     // check gameplay mode
     if (MODE == TEST) {
-    	double angle = GetMoveAngle(info.self.xy_pos, {420, 420});
+    	double angle = GetMoveAngle(info.self.xy_pos, {975, 725}) - info.self.view_angle;
     	aiBehavior = {Trek, angle, angle, 0, 0};
 
 
@@ -1344,14 +1341,14 @@ void vCalcEnemyPriority(vAiInfo & ai) {
 
 
 
-//zms Begin
+// finding path begin (zms)
 
 int GetAreaId(XYPosition CurPosition) {
 	int _x = CurPosition.x;
 	int _y = CurPosition.y;
 	int q_x = _x / 100 , r_x = _x % 100;
 	int q_y = _y / 100 , r_y = _y % 100;
-	int id = q_y * 10 + r_x;
+	int id = q_y * 10 + q_x;
 	return id;
 }
 
@@ -1369,13 +1366,13 @@ double GetMoveAngle(XYPosition CurPosition, XYPosition TargetPosition) {
 
 }
 
-double zms_dis(double x1,double y1,double x2,double y2) {
+double zms_dis(double x1, double y1, double x2, double y2) {
 	x1-=x2;
 	y1-=y2;
 	return sqrt(x1*x1+y1*y1);
 }
 
-int get_BeachNodeId(double cur_x,double cur_y) {
+int get_BeachNodeId(double cur_x, double cur_y) {
 	double min_dis = 1e9; //inf
 	int id = -1;
 	for(int i = 0; i < BeachNode; ++i) {
@@ -1385,10 +1382,13 @@ int get_BeachNodeId(double cur_x,double cur_y) {
 	return id;
 }
 
-int get_CityNodeId(double cur_x,double cur_y) {
+int get_CityNodeId(double cur_x, double cur_y) {
 	double min_dis = 1e9; //inf
 	int id = -1;
+	bool flag = false;
+	if ((cur_x < 5 || cur_x > 95) || (cur_y < 5 || cur_y > 95)) flag = true;
 	for(int i = 0; i < CityNode; ++i) {
+		if (flag && (i > 8 && i != 14 )) continue;
 		double dis = zms_dis(cur_x,cur_y,CityLoc[i][0],CityLoc[i][1]);
 		if(dis < min_dis) id = i, min_dis = dis;
 	}
@@ -1405,7 +1405,8 @@ int get_HillNodeId(double cur_x,double cur_y) {
 	return id;
 }
 
-double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition,int id) {
+
+double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int id) {
 	int delta_x = id % 10 * 100;
 	int delta_y = id / 10 * 100;
 	
@@ -1436,43 +1437,97 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition,int 
 	}
 
 	if(type == BEACH) {
+		double dis = sqrt(vCalcDist(Tar, Cur));
+		if (dis < 2) return vCalcAngle(Tar, Cur);
 		int cur_BeachNodeId = get_BeachNodeId(cur_x,cur_y);
 		int tar_BeachNodeId = get_BeachNodeId(tar_x,tar_y);
+
 		XYPosition node[BeachNode];
 		for(int i = 0; i < BeachNode; ++i)
 			node[i].x = BeachLoc[i][0], node[i].y = BeachLoc[i][1];
-		if (BeachLoc[cur_BeachNodeId][tar_BeachNodeId] != -1) {
-			return vCalcAngle(Tar, Cur);
+		XYPosition s = node[cur_BeachNodeId];
+		XYPosition t;
+		if (cur_BeachNodeId == tar_BeachNodeId) {
+			t = Tar;
 		}
 		else {
-			return vCalcAngle(node[BeachNext[cur_BeachNodeId][tar_BeachNodeId]], Cur);
+			if (BeachAdj[cur_BeachNodeId][tar_BeachNodeId] != -1) {
+
+				t = node[tar_BeachNodeId];
+			}
+			else {
+				t = node[BeachNext[cur_BeachNodeId][tar_BeachNodeId]];
+			}
 		}
+		double tmp = vCalcAngle(Cur, t) - vCalcAngle(s, t);
+		vAngleScale(tmp);
+		double angle = fabs(tmp);
+
+		if (angle < 5 || angle > 355) return vCalcAngle(t, Cur);
+		else return vCalcAngle(s, Cur);
+		
 	}
 
 	if(type == CITY) {
-		int cur_CityNodeId = get_CityNodeId(cur_x,cur_y);
-		int tar_CityNodeId = get_CityNodeId(tar_x,tar_y);
-		XYPosition node[CityNode];
-		for(int i = 0; i < CityNode; ++i)
-			node[i].x = (double)CityLoc[i][0], node[i].y = (double)CityLoc[i][1];
-		if(CityLoc[cur_CityNodeId][tar_CityNodeId] != -1)
-			return vCalcAngle(Tar,Cur);
-		else
-			return vCalcAngle(node[CityNext[cur_CityNodeId][tar_CityNodeId]],Cur);
+		double dis = sqrt(vCalcDist(Tar, Cur));
+		if (dis < 2) return vCalcAngle(Tar, Cur);
+		int cur_CityNodeId = get_CityNodeId(cur_x, cur_y);
+		int tar_CityNodeId = get_CityNodeId(tar_x, tar_y);
 
+		XYPosition node[CityNode];
+		for (int i = 0; i < CityNode; ++i)
+			node[i].x = CityLoc[i][0], node[i].y = CityLoc[i][1];
+		XYPosition s = node[cur_CityNodeId];
+		XYPosition t;
+		if (cur_CityNodeId == tar_CityNodeId) {
+			t = Tar;
+		}
+		else {
+			if (CityAdj[cur_CityNodeId][tar_CityNodeId] != -1) {
+
+				t = node[tar_CityNodeId];
+			}
+			else {
+				t = node[CityNext[cur_CityNodeId][tar_CityNodeId]];
+			}
+		}
+		double tmp = vCalcAngle(Cur, t) - vCalcAngle(s, t);
+		vAngleScale(tmp);
+		double angle = fabs(tmp);
+
+		if (angle < 5 || angle > 355) return vCalcAngle(t, Cur);
+		else return vCalcAngle(s, Cur);
 	}
 
 	if(type == HILL) {
-		int cur_HillNodeId = get_HillNodeId(cur_x,cur_y);
-		int tar_HillNodeId = get_HillNodeId(tar_x,tar_y);
+		double dis = sqrt(vCalcDist(Tar, Cur));
+		if (dis < 2) return vCalcAngle(Tar, Cur);
+		int cur_HillNodeId = get_HillNodeId(cur_x, cur_y);
+		int tar_HillNodeId = get_HillNodeId(tar_x, tar_y);
+
 		XYPosition node[HillNode];
-		for(int i = 0; i < HillNode; ++i)
+		for (int i = 0; i < HillNode; ++i)
 			node[i].x = HillLoc[i][0], node[i].y = HillLoc[i][1];
-		
-		if(HillLoc[cur_HillNodeId][tar_HillNodeId] != -1)
-			return vCalcAngle(Tar,Cur);
-		else
-			return vCalcAngle(node[HillNext[cur_HillNodeId][tar_HillNodeId]],Cur);
+		XYPosition s = node[cur_HillNodeId];
+		XYPosition t;
+		if (cur_HillNodeId == tar_HillNodeId) {
+			t = Tar;
+		}
+		else {
+			if (HillAdj[cur_HillNodeId][tar_HillNodeId] != -1) {
+
+				t = node[tar_HillNodeId];
+			}
+			else {
+				t = node[HillNext[cur_HillNodeId][tar_HillNodeId]];
+			}
+		}
+		double tmp = vCalcAngle(Cur, t) - vCalcAngle(s, t);
+		vAngleScale(tmp);
+		double angle = fabs(tmp);
+
+		if (angle < 5 || angle > 355) return vCalcAngle(t, Cur);
+		else return vCalcAngle(s, Cur);
 	}
 }
 
@@ -1500,37 +1555,42 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 	int tar_x = tar_id % 10;
 	int tar_y = tar_id / 10;
 	int len = abs(cur_x - tar_x) + abs(cur_y - tar_y);
-	if(len == 1) {
-		return vCalcAngle(TargetPosition,CurPosition);
-	}
 	XYPosition O;
-	O.x = 0;
-	O.y = 0;
-	XYPosition Right;
-	Right.x = 1;
-	Right.y = 0;
-	XYPosition Up_Right;
-	Up_Right.x = 1;
-	Up_Right.y = 1;
-	XYPosition Down_Right;
-	Down_Right.x = 1;
-	Down_Right.y = -1;
-	XYPosition Up;
-	Up.x = 0;
-	Up.y = 1;
-	XYPosition Up_Left;
-	Up_Left.x = -1;
-	Up_Left.y = 1;
-	XYPosition Left;
-	Left.x = -1;
-	Left.y = 0;
-	XYPosition Down_Left;
-	Down_Left.x = -1;
-	Down_Left.y = -1;
-	XYPosition Down;
-	Down.x = 0;
-	Down.y = -1;
-
+	O = CurPosition;
+	int xx2 = floor(CurPosition.x);
+	int yy2 = floor(CurPosition.y);
+	double xx = CurPosition.x - (xx2/100)*100;
+	double yy = CurPosition.y - (yy2/100)*100;
+	XYPosition Right = CurPosition;
+	Right.x += 100 - xx;
+//	Right.y = 0;
+	XYPosition Up_Right = CurPosition;
+	Up_Right.x += 100 - xx;
+	Up_Right.y += 100 - yy;
+	XYPosition Down_Right = CurPosition;
+	Down_Right.x += 100 - xx;
+	Down_Right.y -= yy;
+	XYPosition Up = CurPosition;
+//	Up.x = 0;
+	Up.y += 100 - yy;
+	XYPosition Up_Left = CurPosition;
+	Up_Left.x -= xx;
+	Up_Left.y += 100 - yy;
+	XYPosition Left = CurPosition;
+	Left.x -= xx;
+//	Left.y = 0;
+	XYPosition Down_Left = CurPosition;
+	Down_Left.x -= xx;
+	Down_Left.y -= yy;
+	XYPosition Down = CurPosition;
+//	Down.x = 0;
+	Down.y -= yy;
+	if (len == 1) {
+		if(cur_id == tar_id + 1) return GetMoveAngle_small(O,Left,cur_id);
+		if (cur_id == tar_id - 1) return GetMoveAngle_small(O, Right, cur_id);
+		if (cur_id == tar_id + 10) return GetMoveAngle_small(O, Down, cur_id);
+		if (cur_id == tar_id -10) return GetMoveAngle_small(O, Up, cur_id);
+	}
 	if( cur_x <= tar_x && cur_y == tar_y) {
 		int cur_right = cur_id + 1;
 		int cur_up_right = cur_id + 11;
@@ -1540,9 +1600,9 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int v_down_right = getAreaLevel(cur_down_right);
 
 		int mx = max(v_right, max(v_up_right, v_down_right));
-		if(v_right == mx) return vCalcAngle(Right,O);
-		if(v_up_right == mx) return vCalcAngle(Up_Right,O);
-		if(v_down_right == mx) return vCalcAngle(Down_Right,O);
+		if(v_right == mx) return GetMoveAngle_small(O,Right,cur_id);
+		if(v_up_right == mx) return GetMoveAngle_small(O,Up_Right,cur_id);
+		if(v_down_right == mx) return GetMoveAngle_small(O, Down_Right, cur_id);
 
 	}
 	
@@ -1555,9 +1615,9 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int v_down_left = getAreaLevel(cur_down_left);
 
 		int mx = max(v_left, max(v_up_left, v_down_left));
-		if(v_left == mx) return vCalcAngle(Left,O);
-		if(v_up_left == mx) return vCalcAngle(Up_Left,O);
-		if(v_down_left == mx) return vCalcAngle(Down_Left,O);
+		if(v_left == mx) return GetMoveAngle_small(O, Left, cur_id);
+		if(v_up_left == mx) return GetMoveAngle_small(O, Up_Left, cur_id);
+		if(v_down_left == mx) return GetMoveAngle_small(O, Down_Left, cur_id);
 
 	}
 	
@@ -1570,9 +1630,9 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int v_up_left = getAreaLevel(cur_up_left);
 
 		int mx = max(v_up, max(v_up_right, v_up_left));
-		if(v_up == mx) return vCalcAngle(Up,O);
-		if(v_up_right == mx) return vCalcAngle(Up_Right,O);
-		if(v_up_left == mx) return vCalcAngle(Up_Left,O);
+		if(v_up == mx) return GetMoveAngle_small(O, Up, cur_id);
+		if(v_up_right == mx) return GetMoveAngle_small(O, Up_Right, cur_id);
+		if(v_up_left == mx) return GetMoveAngle_small(O, Up_Left, cur_id);
 
 	}
 	
@@ -1585,9 +1645,9 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int v_down_right = getAreaLevel(cur_down_right);
 
 		int mx = max(v_down, max(v_down_left, v_down_right));
-		if(v_down == mx) return vCalcAngle(Down,O);
-		if(v_down_left == mx) return vCalcAngle(Down_Left,O);
-		if(v_down_right == mx) return vCalcAngle(Down_Right,O);
+		if(v_down == mx) return GetMoveAngle_small(O, Down, cur_id);
+		if(v_down_left == mx) return GetMoveAngle_small(O, Down_Left, cur_id);
+		if(v_down_right == mx) return GetMoveAngle_small(O, Down_Right, cur_id);
 
 	}
 	
@@ -1600,9 +1660,9 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int v_up = getAreaLevel(cur_up);
 
 		int mx = max(v_left, max(v_up_left, v_up));
-		if(v_left == mx) return vCalcAngle(Left,O);
-		if(v_up_left == mx) return vCalcAngle(Up_Left,O);
-		if(v_up == mx) return vCalcAngle(Up,O);
+		if(v_left == mx) return GetMoveAngle_small(O, Left, cur_id);
+		if(v_up_left == mx) return GetMoveAngle_small(O, Up_Left, cur_id);
+		if(v_up == mx) return GetMoveAngle_small(O, Up, cur_id);
 
 	}
 	
@@ -1615,9 +1675,9 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int v_down = getAreaLevel(cur_down);
 
 		int mx = max(v_left, max(v_down_left, v_down));
-		if(v_left == mx) return vCalcAngle(Left,O);
-		if(v_down_left == mx) return vCalcAngle(Down_Left,O);
-		if(v_down == mx) return vCalcAngle(Down,O);
+		if(v_left == mx) return GetMoveAngle_small(O, Left, cur_id);
+		if(v_down_left == mx) return GetMoveAngle_small(O, Down_Left, cur_id);
+		if(v_down == mx) return GetMoveAngle_small(O, Down, cur_id);
 
 	}
 	
@@ -1630,9 +1690,9 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int v_up = getAreaLevel(cur_up);
 
 		int mx = max(v_right, max(v_up_right, v_up));
-		if(v_right == mx) return vCalcAngle(Right,O);
-		if(v_up_right == mx) return vCalcAngle(Up_Right,O);
-		if(v_up == mx) return vCalcAngle(Up,O);
+		if(v_right == mx) return GetMoveAngle_small(O, Right, cur_id);
+		if(v_up_right == mx) return GetMoveAngle_small(O, Up_Right, cur_id);
+		if(v_up == mx) return GetMoveAngle_small(O, Up, cur_id);
 
 	}
 	
@@ -1645,13 +1705,13 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int v_down_right = getAreaLevel(cur_down_right);
 
 		int mx = max(v_right, max(v_down, v_down_right));
-		if(v_right == mx) return vCalcAngle(Right,O);
-		if(v_down == mx) return vCalcAngle(Down,O);
-		if(v_down_right == mx) return vCalcAngle(Down_Right,O);
+		if(v_right == mx) return GetMoveAngle_small(O, Right, cur_id);
+		if(v_down == mx) return GetMoveAngle_small(O, Down, cur_id);
+		if(v_down_right == mx) return GetMoveAngle_small(O, Down_Right, cur_id);
 
 	}
 
 	return vCalcAngle(TargetPosition,CurPosition);
 }
 
-//zms End
+// finding path end (zms)
