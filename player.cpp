@@ -13,9 +13,22 @@
 
 // 0 - MEDIC, 1 - SIGNALMAN, 2 - HACK, 3 - SNIPER
 #define AI_VOCATION MEDIC 
+// Debug Info
+std::fstream f("./playback/1.txt", std::ios::out);
 
 #define REFRESH_PERIOD 5
 #define REFRESH_PHASE 4
+
+enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
+const GAMEPLAYMODE MODE = TEST;
+
+/*
+const XYPosition landing_point = {
+    start_pos.x * 0.35 + over_pos.x * 0.65 + rand() % 20, 
+    start_pos.y * 0.35 + over_pos.y * 0.65 + rand() % 20
+};
+*/
+const XYPosition landing_point = { 800 + rand() % 20, 800 + rand() % 20 };
 
 using namespace ts20;
 
@@ -42,35 +55,6 @@ void vAngleScale(double &);
 inline double vCalcDist(XYPosition, XYPosition);
 inline double vCalcAngle(XYPosition, XYPosition);
 
-
-
-// item queue
-// caution: 'Item' is the struct of an item, 'ITEM' is the type
-std::vector<Item> aiWeaponCase;
-std::vector<Item> aiFilterWeaponCase;   // temporary usage
-std::vector<Item> aiMedCase;
-std::vector<Item> aiFilterMedCase;      // temporary usage
-int aiArmor = VEST_1 - 1;
-std::unordered_map<ITEM, int> vWeaponPriority;	// pre-decided
-std::unordered_map<ITEM, int> vMedPriority;		// pre-decided
-std::unordered_map<ITEM, int> vAllPriority;		// pre-decided
-bool aiFilterWeaponFlag = false;
-bool aiFilterMedFlag = false;
-void vUpdateWeapon(Item);   // update when picked up or used
-void vUpdateMed(Item);      // update when picked up or used
-void vInitWeaponPriority();
-void vInitMedPriority();
-void vInitAllPriority();
-inline bool isWeapon(ITEM);
-inline bool isArmor(ITEM);
-inline bool isMed(ITEM);
-void vFilterWeapon(ITEM);   // filter via weapon type
-void vFilterMed(ITEM);      // filter via med type
-void vFilterWeapon(std::vector<ITEM>);
-void vFilterMed(std::vector<ITEM>);
-void vFilterWeapon(int);    // filter via weapon shooting range
-void vCheckItemStatus();	// sync with items in bag
-void vClearFilter();	// clear filter at the end of each frame
 
 
 //zms Begin
@@ -220,9 +204,38 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition,int 
 
 double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int cur_id, int tar_id);
 
-
-
 //zms End
+
+
+
+// item queue
+// caution: 'Item' is the struct of an item, 'ITEM' is the type
+std::vector<Item> aiWeaponCase;
+std::vector<Item> aiFilterWeaponCase;   // temporary usage
+std::vector<Item> aiMedCase;
+std::vector<Item> aiFilterMedCase;      // temporary usage
+int aiArmor = VEST_1 - 1;
+std::unordered_map<ITEM, int> vWeaponPriority;	// pre-decided
+std::unordered_map<ITEM, int> vMedPriority;		// pre-decided
+std::unordered_map<ITEM, int> vAllPriority;		// pre-decided
+bool aiFilterWeaponFlag = false;
+bool aiFilterMedFlag = false;
+void vUpdateWeapon(Item);   // update when picked up or used
+void vUpdateMed(Item);      // update when picked up or used
+void vInitWeaponPriority();
+void vInitMedPriority();
+void vInitAllPriority();
+inline bool isWeapon(ITEM);
+inline bool isArmor(ITEM);
+inline bool isMed(ITEM);
+void vFilterWeapon(ITEM);   // filter via weapon type
+void vFilterMed(ITEM);      // filter via med type
+void vFilterWeapon(std::vector<ITEM>);
+void vFilterMed(std::vector<ITEM>);
+void vFilterWeapon(int);    // filter via weapon shooting range
+void vCheckItemStatus();	// sync with items in bag
+void vClearFilter();	// clear filter at the end of each frame
+
 
 
 // ai behavior
@@ -311,57 +324,50 @@ void play_game() {
 	update_info();
 
     // Debug Info
-	/*
-	f << "frame (" << frame << ") hp (" << info.self.hp
-		<< ") view_angle (" << info.self.view_angle << ") move_angle (" << vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos)
-		<< ") \npos (" << info.self.xy_pos.x << " " << info.self.xy_pos.y
-		<< ") poison (" << info.poison.next_center.x << " " << info.poison.next_center.y 
-		<< ") poison_dist (" << sqrt(vCalcDist(info.self.xy_pos, info.poison.next_center)) << ") " << std::endl;
-	*/
+    if (MODE) {
+        f << "frame (" << frame << ") hp (" << info.self.hp
+            << ") view_angle (" << info.self.view_angle << ") move_angle (" << vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos)
+            << ") \npos (" << info.self.xy_pos.x << " " << info.self.xy_pos.y
+            << ") poison (" << info.poison.next_center.x << " " << info.poison.next_center.y 
+            << ") poison_dist (" << sqrt(vCalcDist(info.self.xy_pos, info.poison.next_center)) << ") " << std::endl;
+	}
+    // Debug Info End
 
     // check weapon and med queue
     if (frame % REFRESH_PERIOD == REFRESH_PHASE) {
         vCheckItemStatus();
 
 		// Debug Info
-		/*
-		f << "Bag: \n";
-		for (int i = 0; i < info.self.bag.size(); ++i) {
-			Item b = info.self.bag[i];
-			f << "\tItem (id: " << b.item_ID << "): "
-				<< "type (" << b.type << ") durability (" << b.durability << ")\n";
-		}
-		f << "Weapon Case: \n";
-		for (int i = 0; i < aiWeaponCase.size(); ++i) {
-			Item w = aiWeaponCase[i];
-			f << "\tWeapon (type: " << w.type << "): "
-				<< "durability (" << w.durability << ")\n";
-		}
-		f << "Med Case: \n";
-		if (aiMedCase.size() == 0) {
-			f << "None\n";
-		} else {
-			for (int i = 0; i < aiMedCase.size(); ++i) {
-				Item m = aiMedCase[i];
-				f << "\tMed (type: " << m.type << "): "
-					<< "durability (" << m.durability << ")\n";
-			}
-		}
-		*/
+        if (MODE) {
+            f << "Bag: \n";
+            for (int i = 0; i < info.self.bag.size(); ++i) {
+                Item b = info.self.bag[i];
+                f << "\tItem (id: " << b.item_ID << "): "
+                    << "type (" << b.type << ") durability (" << b.durability << ")\n";
+            }
+            f << "Weapon Case: \n";
+            for (int i = 0; i < aiWeaponCase.size(); ++i) {
+                Item w = aiWeaponCase[i];
+                f << "\tWeapon (type: " << w.type << "): "
+                    << "durability (" << w.durability << ")\n";
+            }
+            f << "Med Case: \n";
+            if (aiMedCase.size() == 0) {
+                f << "None\n";
+            } else {
+                for (int i = 0; i < aiMedCase.size(); ++i) {
+                    Item m = aiMedCase[i];
+                    f << "\tMed (type: " << m.type << "): "
+                        << "durability (" << m.durability << ")\n";
+                }
+            }
+        }
+        // Debug Info End
     }
     
     // landing
 	if (frame == 0) {
 		srand(time(nullptr) + teammates[0]);
-		/*
-		XYPosition landing_point = {
-			start_pos.x * 0.35 + over_pos.x * 0.65 + rand() % 20, 
-			start_pos.y * 0.35 + over_pos.y * 0.65 + rand() % 20
-		};
-		*/
-		XYPosition landing_point = {
-			350 + rand() % 20, 350 + rand() % 20
-		};
 		parachute(AI_VOCATION, landing_point);
         
         vInitWeaponPriority();
@@ -376,13 +382,104 @@ void play_game() {
 	}
 
 	// Debug Info
-	/*
-	if (info.self.status == ON_PLANE || info.self.status == JUMPING) {
-		f << "jumping" << std::endl;
-		return;
-	}
-	*/
+    if (MODE) {
+        if (info.self.status == ON_PLANE || info.self.status == JUMPING) {
+            f << "jumping" << std::endl;
+            return;
+        }
+    }
+    // Debug Info End
+    
 
+
+    // check gameplay mode
+    if (MODE == TEST) {
+    	double angle = GetMoveAngle(info.self.xy_pos, {420, 420});
+    	aiBehavior = {Trek, angle, angle, 0, 0};
+
+
+
+    	// stage 2: execute ai actions
+	    VSTATUS act = aiBehavior.act;
+
+		// No movement check
+		if (aiBehavior.act == Trek && aiPrevAct[0].act == Trek && isNoMove()) {
+			// Debug Info
+			if (MODE) f << "No Movement!\n";
+			aiBehavior = aiPrevAct[0];
+			aiBehavior.view_angle = -43.21;
+			aiBehavior.move_angle = -43.21;
+		}
+
+	    // Check angle parameters
+		vAngleScale(aiBehavior.move_angle);
+		vAngleScale(aiBehavior.view_angle);
+
+	    if (act == Attack) {
+	        Item weapon = aiFilterWeaponFlag ? aiFilterWeaponCase[0] : aiWeaponCase[0];
+	        shoot(weapon.type, aiBehavior.move_angle);
+	        weapon.durability = -1;
+	        vUpdateWeapon(weapon);
+			// Debug Info
+	        if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
+	    } else if (act == MedSelf) {
+	        Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
+	        shoot(med.type, 0);
+	        med.durability = -1;
+	        vUpdateMed(med);
+			// Debug Info
+			if (MODE) f << "MedSelf: " << med.type << std::endl;
+	    } else if (act == MedTeam) {
+	        Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
+	        shoot(med.type, 0, aiBehavior.target_ID);
+	        med.durability = -1;
+	        vUpdateMed(med);
+			// Debug Info
+			if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
+	    } else if (act == Radio) {
+	        radio(aiBehavior.target_ID, aiBehavior.msg);
+			// Debug Info
+			if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
+	    } else if (act == Retreat) {
+	        // Temporary 
+	        move(aiBehavior.view_angle + 180.0, aiBehavior.view_angle);
+	    } else if (act == Pick) {
+	        pickup(aiBehavior.target_ID);
+	        for (int i = 0; i < info.items.size(); ++i) {
+	            if (info.items[i].item_ID == aiBehavior.target_ID) {
+	                if (isWeapon(info.items[i].type)) {
+	                    vUpdateWeapon(info.items[i]);
+	                } else if (isMed(info.items[i].type)) {
+	                    vUpdateMed(info.items[i]);
+	                } else if (isArmor(info.items[i].type)) {
+	                    ITEM a = info.items[i].type;
+	                    aiArmor = aiArmor > a ? aiArmor : a;
+	                }
+	                break;
+	            }
+	        }
+	    } else if (act == Turn) {
+	        move(0, aiBehavior.view_angle, NOMOVE);
+			// Debug Info
+			if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
+	    } else if (act == Trek) {
+	        move(aiBehavior.move_angle, aiBehavior.view_angle);
+			// Debug Info
+			if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
+	    } else {
+			;// do nothing
+	    }
+
+        // after processing
+        vClearFilter();
+        vClearBehavior();
+        aiPrevSelf = info.self;
+        // Debug Info
+        if (MODE) f << "-\n--\n-\n";
+
+        return;
+    }
+    
 
 
     // stage 0: evaluate battle field status
@@ -414,24 +511,25 @@ void play_game() {
         aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
     
 	// Debug Info
-	/*
-	if (aiBehavior.act == Undecided) {
-		f << ">>> Warning: AI behavior undecided. <<<\n";
-	} else {
-		f << ">>> Behavior decided: ";
-		switch (aiBehavior.act) {
-			case Attack: f << "Attack <<<\n"; break;
-			case Retreat: f << "Retreat <<<\n"; break;
-			case MedSelf: f << "MedSelf <<<\n"; break;
-            case MedTeam: f << "MedTeam <<<\n"; break;
-            case Radio: f << "Radio <<<\n"; break;
-			case Pick: f << "Pick <<<\n"; break;
-            case Turn: f << "Turn <<<\n"; break;
-			case Trek: f << "Trek <<<\n"; break;
-            case Stand: f << "Stand By <<<\n"; break;
-		}
-	}
-	*/
+    if (MODE) {
+        if (aiBehavior.act == Undecided) {
+            f << ">>> Warning: AI behavior undecided. <<<\n";
+        } else {
+            f << ">>> Behavior decided: ";
+            switch (aiBehavior.act) {
+                case Attack: f << "Attack <<<\n"; break;
+                case Retreat: f << "Retreat <<<\n"; break;
+                case MedSelf: f << "MedSelf <<<\n"; break;
+                case MedTeam: f << "MedTeam <<<\n"; break;
+                case Radio: f << "Radio <<<\n"; break;
+                case Pick: f << "Pick <<<\n"; break;
+                case Turn: f << "Turn <<<\n"; break;
+                case Trek: f << "Trek <<<\n"; break;
+                case Stand: f << "Stand By <<<\n"; break;
+            }
+        }
+    }
+    // Debug Info End
 
 
 
@@ -441,7 +539,7 @@ void play_game() {
 	// No movement check
 	if (aiBehavior.act == Trek && aiPrevAct[0].act == Trek && isNoMove()) {
 		// Debug Info
-//		f << "No Movement!\n";
+		if (MODE) f << "No Movement!\n";
 		aiBehavior = aiPrevAct[0];
 		aiBehavior.view_angle = -43.21;
 		aiBehavior.move_angle = -43.21;
@@ -457,25 +555,25 @@ void play_game() {
         weapon.durability = -1;
         vUpdateWeapon(weapon);
 		// Debug Info
-//		f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
+        if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
     } else if (act == MedSelf) {
         Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
         shoot(med.type, 0);
         med.durability = -1;
         vUpdateMed(med);
 		// Debug Info
-//		f << "MedSelf: " << med.type << std::endl;
+		if (MODE) f << "MedSelf: " << med.type << std::endl;
     } else if (act == MedTeam) {
         Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
         shoot(med.type, 0, aiBehavior.target_ID);
         med.durability = -1;
         vUpdateMed(med);
 		// Debug Info
-//		f << "MedTeam: " << aiBehavior.target_ID << std::endl;
+		if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
     } else if (act == Radio) {
         radio(aiBehavior.target_ID, aiBehavior.msg);
 		// Debug Info
-//		f << "Radio: " << aiBehavior.msg << std::endl;
+		if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
     } else if (act == Retreat) {
         // Temporary 
         move(aiBehavior.view_angle + 180.0, aiBehavior.view_angle);
@@ -497,11 +595,11 @@ void play_game() {
     } else if (act == Turn) {
         move(0, aiBehavior.view_angle, NOMOVE);
 		// Debug Info
-//		f << "Turn: " << aiBehavior.view_angle << std::endl;
+		if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
     } else if (act == Trek) {
         move(aiBehavior.move_angle, aiBehavior.view_angle);
 		// Debug Info
-//		f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
+		if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
     } else {
 		;// do nothing
     }
@@ -513,7 +611,7 @@ void play_game() {
 	vClearBehavior();
     aiPrevSelf = info.self;
 	// Debug Info
-//	f << "-\n--\n-\n";
+	if (MODE) f << "-\n--\n-\n";
 
 	return;
 }
@@ -590,10 +688,11 @@ void vUpdateWeapon(Item weapon) {
     }
 
 	// Debug Info
-	/*
-    f << "Weapon Update: type (" << w << "), place (" << p
-        << "), durability (" << weapon.durability << ")\n";
-	*/
+    if (MODE) {
+        f << "Weapon Update: type (" << w << "), place (" << p
+            << "), durability (" << weapon.durability << ")\n";
+    }
+    // Debug Info End
 }
 
 void vUpdateMed(Item med) {
@@ -627,10 +726,11 @@ void vUpdateMed(Item med) {
     }
 
 	// Debug Info
-	/*
-    f << "Med Update: type (" << m << "), place (" << p
-        << "), durability (" << med.durability << ")\n";
-	*/
+    if (MODE) {
+        f << "Med Update: type (" << m << "), place (" << p
+            << "), durability (" << med.durability << ")\n";
+    }
+    // Debug Info End
 }
 
 // Temporary
@@ -864,8 +964,7 @@ bool vEncounterEnemy() {
     if (eFlag && enemyVA.value > valueTH) {
         if (info.self.attack_cd != 0) {
             // Debug Info
-//			f << "Attack cd!\n";
-            ;
+			if (MODE) f << "Attack cd!\n";
         } else {
             aiBehavior = { Attack, enemyVA.rel_polar_pos.angle, 0.0, 0, 0 };
             return true;
@@ -885,7 +984,7 @@ bool vEncounterEnemy() {
     return (aiBehavior.act != Undecided);
 }
 
-// 当掉血时（现在这里时当血量过低时）//
+// 当掉血时（现在这里时当血量过低时）
 bool vLoseHp() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
@@ -954,9 +1053,7 @@ bool vRunPoison() {
     if (isPoison) {
 		double alpha = (frame > 300 && frame < 1000) ? 0.3 : 0.6;
 		double r = info.poison.next_radius * alpha;
-		double zms_Angle = GetMoveAngle(info.self.xy_pos, info.poison.next_center);
-		// zms_Angle = vCalcAngle(info.poison.next_center,info.self.xy_pos);
-		double mAngle = zms_Angle - info.self.view_angle;
+		double mAngle = vCalcAngle(info.poison.next_center, info.self.xy_pos) - info.self.view_angle;
 		double vAngle = mAngle;
 		if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r) {
 			aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
@@ -995,7 +1092,7 @@ bool vPickItem() {
         // 如果要捡，不在范围内则Trek，在范围内则Pick
         if (pFlag) {
             // Debug Info
-//			f << "Target item: " << target.polar_pos.distance << " " << target.polar_pos.angle << std::endl;
+			if (MODE) f << "Target item: " << target.polar_pos.distance << " " << target.polar_pos.angle << std::endl;
             if (target.polar_pos.distance <= PICKUP_DISTANCE) {
                 aiBehavior = { Pick, 0, 0, target.item_ID, 0 };
             } else {
@@ -1011,7 +1108,7 @@ bool vPickItem() {
     return (aiBehavior.act != Undecided);
 }
 
-// 在周围随便走走//
+// 在周围随便走走
 bool vWalkAround() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
@@ -1024,7 +1121,7 @@ bool vWalkAround() {
         aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
         return true;
     } else {
-        // 如果离毒中心太近就向外走一点//
+        // 如果离毒中心太近就向外走一点
         aiBehavior = { Trek, mAngle - angleDT, vAngle - angleDT, 0, 0 };
         return true;
     }
@@ -1141,19 +1238,20 @@ void vSightHandler() {
 	vLostEnemy();
 
 	// Debug Info
-	/*
-	if (aiEnemy.size() != 0) {
-		f << "Enemy Queue: \n";
-		for (int i = 0; i < aiEnemy.size(); ++i) {
-			int id = aiEnemy[i];
-			f << "\tEnemy (id: " << id << "): "
-				<< "frame (" << aiKV[id].lastUpdateFrame << "), "
-				<< "priority (" << aiKV[id].priority << "), "
-				<< "rel_angle (" << aiKV[id].rel_polar_pos.angle << "), "
-				<< "rel_dist (" << aiKV[id].rel_polar_pos.distance << ")\n"; 
-		}
-	}
-	*/
+    if (MODE) {
+        if (aiEnemy.size() != 0) {
+            f << "Enemy Queue: \n";
+            for (int i = 0; i < aiEnemy.size(); ++i) {
+                int id = aiEnemy[i];
+                f << "\tEnemy (id: " << id << "): "
+                    << "frame (" << aiKV[id].lastUpdateFrame << "), "
+                    << "priority (" << aiKV[id].priority << "), "
+                    << "rel_angle (" << aiKV[id].rel_polar_pos.angle << "), "
+                    << "rel_dist (" << aiKV[id].rel_polar_pos.distance << ")\n"; 
+            }
+        }
+    }
+    // Debug Info End
 
     // process item info
 }
@@ -1225,7 +1323,7 @@ void vLostEnemy() {
 			aiEnemy.push_back(id);
 
 			// Debug Info
-//			f << "Enemy (id: " << id << ") lost in sight.\n";
+			if (MODE) f << "Enemy (id: " << id << ") lost in sight.\n";
 		}
 	}
 }
@@ -1243,6 +1341,7 @@ void vCalcEnemyPriority(vAiInfo & ai) {
 	}
 	ai.priority = ai.value - ai.threat;
 }
+
 
 
 //zms Begin
