@@ -14,21 +14,18 @@
 // 0 - MEDIC, 1 - SIGNALMAN, 2 - HACK, 3 - SNIPER
 #define AI_VOCATION MEDIC 
 // Debug Info
-std::fstream f("./playback/1.txt", std::ios::out);
+//std::fstream f("./playback/0.txt", std::ios::out);
+std::fstream f;
 
 #define REFRESH_PERIOD 5
 #define REFRESH_PHASE 4
 
 enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
-const GAMEPLAYMODE MODE = TEST;
+const GAMEPLAYMODE MODE = GAME_NO_OUTPUT;
 
-/*
-const XYPosition landing_point = {
-    start_pos.x * 0.35 + over_pos.x * 0.65 + rand() % 20, 
-    start_pos.y * 0.35 + over_pos.y * 0.65 + rand() % 20
-};
-*/
-const XYPosition landing_point = { 890, 990};
+
+const XYPosition landing_point = {750 + rand() % 60, 650 + rand() % 60};
+// const XYPosition landing_point = {750, 650};
 
 using namespace ts20;
 
@@ -97,65 +94,68 @@ int BeachNext[BeachNode][BeachNode] = {
 	{  9,  9, 11, 11,  9,  9,  9,  9,  9,  9,  9, 11, 12}
 };
 
-const int CityNode = 23;
+const int CityNode = 24;
 int CityLoc[CityNode][2] = {
     { 2,  2}, {50,  5}, {98,  2}, {96, 50}, {98, 98}, {50, 95}, { 5, 50},
     { 8, 92}, {35, 92}, {65, 92}, {92, 92},
     {92, 68}, {65, 68}, {35, 68}, { 8, 68},
     { 8, 32}, {35, 32}, {65, 32}, {92, 32},
-    {92,  8}, {65,  8}, {35,  8}, { 8,  8}
+    {92,  8}, {65,  8}, {35,  8}, { 8,  8},
+	{2, 98}
 };
 
 int CityAdj[CityNode][CityNode] = {
-    { 0, 48, -1, -1, -1, -1, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 16, 16, -1},
-    {-1, 48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, 48,  0, 48, -1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1},
-    {-1, -1, -1, 48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, 48,  0, -1, -1, 16, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {48, -1, -1, -1, -1, -1,  0, -1, -1, -1, -1, -1, -1, -1, 19, 19, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1,  0, 27, -1, -1, -1, -1, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, 16, -1, 27,  0, 30, -1, -1, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, 16, -1, -1, 30,  0, 27, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 27,  0, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 24,  0, 27, -1, -1, -1, -1, 45, 36, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, 27,  0, 30, -1, -1, 47, -1, 45, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, 30,  0, 27, 45, -1, 47, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, 19, 24, -1, -1, -1, -1, -1, 27,  0, 36, 45, -1, -1, -1, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 45, 36,  0, 27, -1, -1, -1, -1, -1, 24},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 47, -1, 45, 27,  0, 30, -1, -1, -1, 24, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45, -1, 47, -1, -1, 30,  0, 27, -1, 24, -1, -1},
-    {-1, -1, -1, 19, -1, -1, -1, -1, -1, -1, -1, 36, 45, -1, -1, -1, -1, 27,  0, 24, -1, -1, -1},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24,  0, 27, -1, -1},
-    {-1, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, 27,  0, 30, -1},
-    {-1, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, 30,  0, 27},
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, -1, -1, 27,  0}
+    { 0, 48, -1, -1, -1, -1, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 16, 16, -1, -1},
+    {-1, 48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, 48,  0, 48, -1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1, -1},
+    {-1, -1, -1, 48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, 48,  0, -1, -1, 16, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 48},
+    {48, -1, -1, -1, -1, -1,  0, -1, -1, -1, -1, -1, -1, -1, 19, 19, -1, -1, -1, -1, -1, -1, -1, 48},
+    {-1, -1, -1, -1, -1, -1, -1,  0, 27, -1, -1, -1, -1, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, 16, -1, 27,  0, 30, -1, -1, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, 16, -1, -1, 30,  0, 27, -1, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 27,  0, 24, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 24,  0, 27, -1, -1, -1, -1, 45, 36, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, 27,  0, 30, -1, -1, 47, -1, 45, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, 30,  0, 27, 45, -1, 47, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, 19, 24, -1, -1, -1, -1, -1, 27,  0, 36, 45, -1, -1, -1, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1, -1, -1, 45, 36,  0, 27, -1, -1, -1, -1, -1, 24, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 47, -1, 45, 27,  0, 30, -1, -1, -1, 24, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45, -1, 47, -1, -1, 30,  0, 27, -1, 24, -1, -1, -1},
+    {-1, -1, -1, 19, -1, -1, -1, -1, -1, -1, -1, 36, 45, -1, -1, -1, -1, 27,  0, 24, -1, -1, -1, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24,  0, 27, -1, -1, -1},
+    {-1, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, 27,  0, 30, -1, -1},
+    {-1, 16, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, 30,  0, 27, -1},
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, -1, -1, 27,  0, -1},
+	{-1, -1, -1, -1, -1, 48, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0}
 };
 
-int CityNext [CityNode][CityNode]{
-	{  0,  1,  1,  1,  6,  6,  6,  6,  6,  6,  1,  1,  6,  6,  6,  6,  1,  1,  1,  1,  1,  1,  6},
-	{  0,  1,  2, 20, 20, 20, 21, 21, 20, 21, 20, 20, 21, 20, 21, 21, 21, 20, 20, 20, 20, 21, 21},
-	{  1,  1,  2,  3,  3,  3,  1,  1,  3,  3,  3,  3,  3,  3,  1,  1,  1,  1,  3,  3,  1,  1,  1},
-	{ 18, 18,  2,  3,  4, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 18, 18, 18, 18, 18, 18, 18, 18},
-	{  5,  3,  3,  3,  4,  5,  5,  5,  5,  5,  5,  3,  5,  5,  5,  5,  3,  3,  3,  3,  3,  3,  5},
-	{  8,  8,  9,  9,  4,  5,  8,  8,  8,  9,  9,  9,  9,  8,  8,  8,  9,  8,  9,  9,  8,  9,  8},
-	{  0, 15, 15, 14, 14, 14,  6, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15},
-	{ 14, 14, 14,  8,  8,  8, 14,  7,  8,  8,  8,  8,  8,  8, 14, 14, 14,  8,  8,  8,  8, 14, 14},
-	{  7, 13,  9,  9,  5,  5,  7,  7,  8,  9,  9,  9,  9, 13,  7, 13,  7, 13, 13, 13, 13,  7, 13},
-	{  8, 12, 10, 10,  5,  5,  8,  8,  8,  9, 10, 10, 12,  8,  8, 12, 12, 10, 12, 12, 10, 12, 12},
-	{ 11, 11, 11, 11,  9,  9,  9,  9,  9,  9, 10, 11,  9,  9,  9,  9,  9, 11, 11, 11, 11,  9,  9},
-	{ 17, 17,  3,  3,  3, 10, 12, 10, 10, 10, 10, 11, 12, 12, 12, 12, 12, 17, 18, 18, 17, 12, 12},
-	{ 13, 16, 11, 11,  9,  9, 13,  9,  9,  9,  9, 11, 12, 13, 13, 16, 16, 11, 18, 18, 11, 16, 16},
-	{ 14, 17, 12, 12,  8,  8, 14,  8,  8,  8,  8, 12, 12, 13, 14, 15, 14, 17, 17, 17, 17, 14, 15},
-	{  6, 16, 16, 13,  7,  7,  6,  7,  7,  7,  7, 13, 13, 13, 14, 15, 16, 13, 13, 13, 13, 16, 15},
-	{  6, 16, 16, 16, 13, 13,  6, 14, 13, 16, 16, 16, 16, 13, 14, 15, 16, 16, 16, 16, 16, 16, 22},
-	{ 21, 21, 21, 17, 17, 12, 15, 14, 14, 12, 12, 12, 12, 14, 14, 15, 16, 17, 17, 17, 17, 21, 15},
-	{ 20, 20, 20, 18, 18, 13, 16, 13, 13, 11, 11, 11, 11, 13, 13, 16, 16, 17, 18, 18, 20, 16, 16},
-	{ 17, 17,  3,  3,  3, 12, 17, 17, 17, 12, 11, 11, 12, 17, 17, 17, 17, 17, 18, 19, 17, 17, 17},
-	{ 20, 20, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 20, 20, 20},
-	{  1,  1,  1, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 19, 20, 21, 21},
-	{  1,  1,  1, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 20, 20, 21, 22},
-	{ 15, 21, 21, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 21, 21, 21, 22}
+int CityNext[CityNode][CityNode]{
+	{  0,  1,  1,  1,  6,  6,  6,  6,  6,  6,  1,  1,  6,  6,  6,  6,  1,  1,  1,  1,  1,  1,  6,  6},
+	{  0,  1,  2, 20, 20, 20, 21, 21, 20, 21, 20, 20, 21, 20, 21, 21, 21, 20, 20, 20, 20, 21, 21, 21},
+	{  1,  1,  2,  3,  3,  3,  1,  1,  3,  3,  3,  3,  3,  3,  1,  1,  1,  1,  3,  3,  1,  1,  1,  1},
+	{ 18, 18,  2,  3,  4, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 18, 18, 18, 18, 18, 18, 18, 18, 11},
+	{  5,  3,  3,  3,  4,  5,  5,  5,  5,  5,  5,  3,  5,  5,  5,  5,  3,  3,  3,  3,  3,  3,  5,  5},
+	{  8,  8,  9,  9,  4,  5,  8,  8,  8,  9,  9,  9,  9,  8,  8,  8,  9,  8,  9,  9,  8,  9,  8, 23},
+	{  0, 15, 15, 14, 14, 14,  6, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 23},
+	{ 14, 14, 14,  8,  8,  8, 14,  7,  8,  8,  8,  8,  8,  8, 14, 14, 14,  8,  8,  8,  8, 14, 14,  8},
+	{  7, 13,  9,  9,  5,  5,  7,  7,  8,  9,  9,  9,  9, 13,  7, 13,  7, 13, 13, 13, 13,  7, 13,  5},
+	{  8, 12, 10, 10,  5,  5,  8,  8,  8,  9, 10, 10, 12,  8,  8, 12, 12, 10, 12, 12, 10, 12, 12,  5},
+	{ 11, 11, 11, 11,  9,  9,  9,  9,  9,  9, 10, 11,  9,  9,  9,  9,  9, 11, 11, 11, 11,  9,  9,  9},
+	{ 17, 17,  3,  3,  3, 10, 12, 10, 10, 10, 10, 11, 12, 12, 12, 12, 12, 17, 18, 18, 17, 12, 12, 10},
+	{ 13, 16, 11, 11,  9,  9, 13,  9,  9,  9,  9, 11, 12, 13, 13, 16, 16, 11, 18, 18, 11, 16, 16,  9},
+	{ 14, 17, 12, 12,  8,  8, 14,  8,  8,  8,  8, 12, 12, 13, 14, 15, 14, 17, 17, 17, 17, 14, 15,  8},
+	{  6, 16, 16, 13,  7,  7,  6,  7,  7,  7,  7, 13, 13, 13, 14, 15, 16, 13, 13, 13, 13, 16, 15,  6},
+	{  6, 16, 16, 16, 13, 13,  6, 14, 13, 16, 16, 16, 16, 13, 14, 15, 16, 16, 16, 16, 16, 16, 22,  6},
+	{ 21, 21, 21, 17, 17, 12, 15, 14, 14, 12, 12, 12, 12, 14, 14, 15, 16, 17, 17, 17, 17, 21, 15, 15},
+	{ 20, 20, 20, 18, 18, 13, 16, 13, 13, 11, 11, 11, 11, 13, 13, 16, 16, 17, 18, 18, 20, 16, 16, 16},
+	{ 17, 17,  3,  3,  3, 12, 17, 17, 17, 12, 11, 11, 12, 17, 17, 17, 17, 17, 18, 19, 17, 17, 17, 17},
+	{ 20, 20, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 20, 20, 20, 20},
+	{  1,  1,  1, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 19, 20, 21, 21, 21},
+	{  1,  1,  1, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 20, 20, 21, 22, 22},
+	{ 15, 21, 21, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 21, 21, 21, 22, 15},
+	{  6,  6,  6,  5,  5,  5,  6,  6,  5,  5,  5,  5,  5,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6, 23}
 };
 
 const int HillNode = 12;
@@ -225,6 +225,8 @@ void vInitAllPriority();
 inline bool isWeapon(ITEM);
 inline bool isArmor(ITEM);
 inline bool isMed(ITEM);
+int vGetWeaponDurabilitySum();
+bool aiFirstShotFlag = false;
 void vFilterWeapon(ITEM);   // filter via weapon type
 void vFilterMed(ITEM);      // filter via med type
 void vFilterWeapon(std::vector<ITEM>);
@@ -350,7 +352,7 @@ void play_game() {
             }
             f << "Med Case: \n";
             if (aiMedCase.size() == 0) {
-                f << "None\n";
+                f << "\tNone\n";
             } else {
                 for (int i = 0; i < aiMedCase.size(); ++i) {
                     Item m = aiMedCase[i];
@@ -377,6 +379,9 @@ void play_game() {
 
 		return;
 	}
+	if (info.self.status == ON_PLANE || info.self.status == JUMPING) {
+		return;
+	}
 
 	// Debug Info
     if (MODE) {
@@ -391,7 +396,7 @@ void play_game() {
 
     // check gameplay mode
     if (MODE == TEST) {
-    	double angle = GetMoveAngle(info.self.xy_pos, {975, 725}) - info.self.view_angle;
+    	double angle = GetMoveAngle(info.self.xy_pos, {450, 450}) - info.self.view_angle;
     	aiBehavior = {Trek, angle, angle, 0, 0};
 
 
@@ -492,11 +497,15 @@ void play_game() {
 
     if (!decided && AI_VOCATION == MEDIC)
         decided = vDeadTeammate();
+	if (!aiFirstShotFlag && vGetWeaponDurabilitySum() < 6) {
+		if (!decided)
+			decided = vPickItem();
+	}
     if (!decided)
         decided = vEncounterEnemy();
     if (!decided)
         decided = vLoseHp();
-    if (!decided)
+    if (!decided && frame > 300)
         decided = vRunPoison();
     if (!decided)
         decided = vPickItem();
@@ -551,6 +560,7 @@ void play_game() {
         shoot(weapon.type, aiBehavior.move_angle);
         weapon.durability = -1;
         vUpdateWeapon(weapon);
+		aiFirstShotFlag = true;
 		// Debug Info
         if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
     } else if (act == MedSelf) {
@@ -663,7 +673,7 @@ void vUpdateWeapon(Item weapon) {
             isFind = true;
             aiWeaponCase[p].durability += weapon.durability;
             weapon.durability = aiWeaponCase[p].durability;
-			if (weapon.durability == 0) {
+			if (weapon.durability <= 0) {
 				aiWeaponCase.erase(aiWeaponCase.begin() + p);
 			}
             break;
@@ -800,6 +810,15 @@ inline bool isMed(ITEM m) {
 	return ITEM_DATA[m].param < 0.0;
 }
 
+int vGetWeaponDurabilitySum() {
+	int sum = 0;
+	for (int i = 0; i < aiWeaponCase.size(); ++i) {
+		if (aiWeaponCase[i].type != FIST && aiWeaponCase[i].type != TIGER_BILLOW_HAMMER)
+			sum += aiWeaponCase[i].durability;
+	}
+	return sum;
+}
+
 void vFilterWeapon(ITEM w) {
 	for (int i = 0; i < aiWeaponCase.size(); ++i) {
 		if (aiWeaponCase[i].type == w) {
@@ -862,6 +881,7 @@ void vCheckItemStatus() {
     aiArmor = VEST_1 - 1;
 	for (int i = 0; i < info.self.bag.size(); ++i) {
         Item item = info.self.bag[i];
+		if (item.durability == 0) continue;
         // check weapons
 		if (isWeapon(item.type)) {
 			bool isFind = false;
@@ -879,7 +899,7 @@ void vCheckItemStatus() {
 				}
 			}
 			if (!isFind) {
-				vUpdateWeapon(item);
+				if (item.durability != 0) vUpdateWeapon(item);
 			}
 		}
         // check armor
@@ -936,15 +956,10 @@ void vClearBehavior() {
 /* ********** ai decision ********** */
 // 当遇到敌人时
 bool vEncounterEnemy() {
-    // 优先跑毒
-    double r = info.poison.next_radius * 0.9;
-    if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r)
-        return false;
-
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
-    float valueTH = -10.0;      // enemy value thres
-    float threatTH = 50.0;      // enemy threat thres
+    float valueTH = -100.0;      // enemy value thres
+    float threatTH = 100.0;      // enemy threat thres
     bool eFlag = false;         // if exist enemy in sight
     vAiInfo enemyVA, enemyDG;   // valuable, dangerous
 
@@ -963,8 +978,10 @@ bool vEncounterEnemy() {
             // Debug Info
 			if (MODE) f << "Attack cd!\n";
         } else {
-            aiBehavior = { Attack, enemyVA.rel_polar_pos.angle, 0.0, 0, 0 };
-            return true;
+			if (aiWeaponCase[0].type != FIST) {
+				aiBehavior = { Attack, enemyVA.rel_polar_pos.angle, 0.0, 0, 0 };
+				return true;
+			}
         }
     }
 
@@ -1048,9 +1065,9 @@ bool vRunPoison() {
         && fabs(info.poison.next_center.y - 0.0) > 0.1;
 
     if (isPoison) {
-		double alpha = (frame > 300 && frame < 1000) ? 0.3 : 0.6;
+		double alpha = (frame > 300 && frame < 1000) ? 0.4 : 0.7;
 		double r = info.poison.next_radius * alpha;
-		double mAngle = vCalcAngle(info.poison.next_center, info.self.xy_pos) - info.self.view_angle;
+		double mAngle = GetMoveAngle(info.self.xy_pos, info.poison.next_center) - info.self.view_angle;
 		double vAngle = mAngle;
 		if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r) {
 			aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
@@ -1065,22 +1082,48 @@ bool vPickItem() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
     if (info.items.size() != 0) {
-        // 先找到优先级最高的
+        // 先找到优先级最高的，没武器优先捡武器
         Item target = { 0, FIST, {0, 0}, 0 };
         int max = 0;
         int priTH = vAllPriority[FIRST_AID_CASE];
-        bool pFlag = false;
-        for (int i = 0; i < info.items.size(); ++i) {
-            Item thisI = info.items[i];
-            if (vAllPriority[thisI.type] > max) {
-                max = vAllPriority[thisI.type];
-                target = thisI;
-            }
+		bool pFlag = false, wFlag = false, nwFlag = false;
+		for (int i = 0; i < info.items.size(); ++i) {
+			Item thisI = info.items[i];
+			if (thisI.polar_pos.distance < 1.0) {
+				target = thisI;
+				pFlag = true;
+				break;
+			}
+			if (vGetWeaponDurabilitySum() < 20 && isWeapon(thisI.type) && thisI.type != TIGER_BILLOW_HAMMER) {
+				max = vAllPriority[thisI.type];
+				target = thisI;
+				wFlag = true;
+				if (aiWeaponCase[0].type == FIST) {
+					max = thisI.polar_pos.distance;
+					nwFlag = true;
+				}
+			}
+			if (thisI.polar_pos.distance <= 16) {
+				if (nwFlag) {
+					if (isWeapon(thisI.type) && thisI.polar_pos.distance < max) {
+						max = thisI.polar_pos.distance;
+						target = thisI;
+					} else {
+						continue;
+					}
+				}
+				if (vAllPriority[thisI.type] > max) {
+					if (wFlag && !isWeapon(thisI.type))
+						continue;
+					max = vAllPriority[thisI.type];
+					target = thisI;
+				}
+			}
         }
 
         // 判断优先级最高的要不要捡
         if (
-            max >= priTH ||
+            !pFlag && max >= priTH ||
             isWeapon(target.type) && target.type != FIST && aiWeaponCase.size() <= 2 ||
             isArmor(target.type) && target.type >= aiArmor ||
             isMed(target.type) && (aiMedCase.size() == 0 || aiMedCase[0].durability <= 8)
@@ -1297,9 +1340,9 @@ void vUpdateEnemy(int id) {
 		}
 	}
 	for (int i = 0; i < aiEnemy.size(); ++i) {
-		if (pri <= aiKV[aiEnemy[i]].priority) {
+		if (pri >= aiKV[aiEnemy[i]].priority) {
 			flag = true;
-			aiEnemy.insert(aiEnemy.begin() + i + 1, id);
+			aiEnemy.insert(aiEnemy.begin() + i, id);
 			break;
 		}
 	}
@@ -1316,8 +1359,8 @@ void vLostEnemy() {
 			// Temporary
 			// set priority = 0, update enemy queue
 			aiKV[id].priority = 0;
+			aiKV[id].value = -1000000;
 			aiEnemy.erase(aiEnemy.begin() + i);
-			aiEnemy.push_back(id);
 
 			// Debug Info
 			if (MODE) f << "Enemy (id: " << id << ") lost in sight.\n";
@@ -1326,17 +1369,28 @@ void vLostEnemy() {
 }
 
 void vCalcEnemyPriority(vAiInfo & ai) {
-	if (ai.vocation == SNIPER) {
-		ai.threat = 0.0;
-		ai.value = 0.0;
-	} else if (ai.vocation == MEDIC) {
-		ai.threat = 10.0;
-		ai.value = 100.0;
+	if (ai.status == DEAD || ai.status == REAL_DEAD) {
+		ai.threat = -1000000.0;
+		ai.value = -1000000.0;
 	} else {
-		ai.threat = 25.0;
-		ai.value = 50.0;
+		if (ai.vocation == SNIPER) {
+			ai.threat = 50.0;
+			ai.value = 25.0;
+		}
+		else if (ai.vocation == MEDIC) {
+			ai.threat = 10.0;
+			ai.value = 100.0;
+		}
+		else if (ai.vocation == SIGNALMAN) {
+			ai.threat = 25.0;
+			ai.value = 60.0;
+		}
+		else {
+			ai.threat = 25.0;
+			ai.value = 0.0;
+		}
 	}
-	ai.priority = ai.value - ai.threat;
+	ai.priority = ai.value + ai.threat;
 }
 
 
@@ -1388,9 +1442,13 @@ int get_CityNodeId(double cur_x, double cur_y) {
 	bool flag = false;
 	if ((cur_x < 5 || cur_x > 95) || (cur_y < 5 || cur_y > 95)) flag = true;
 	for(int i = 0; i < CityNode; ++i) {
-		if (flag && (i > 8 && i != 14 )) continue;
+		if (flag && (i >= 7 && i != 23)) continue;
+		if (!flag && (i == 0 || i == 2 || i == 4 || i == 23)) continue;
 		double dis = zms_dis(cur_x,cur_y,CityLoc[i][0],CityLoc[i][1]);
-		if(dis < min_dis) id = i, min_dis = dis;
+		if (dis < min_dis) {
+			id = i;
+			min_dis = dis;
+		}
 	}
 	return id;
 }
@@ -1533,15 +1591,15 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 
 int getAreaLevel(int id) {
 	if (id < 0 || id >=100) return -1;
-	if( MAP[id] == GRASS) return 3;
+	if( MAP[id] == GRASS) return 1;
 	if( MAP[id] == ROADA) return 3;
 	if( MAP[id] == ROADB) return 3;
-	if( MAP[id] == FOREST) return 3;
-	if( MAP[id] == FARMLAND) return 2;
-	if( MAP[id] == POOL) return 2;
-	if( MAP[id] == BEACH) return 1;
-	if( MAP[id] == CITY) return 1;
-	if( MAP[id] == HILL) return 1;
+	if( MAP[id] == FOREST) return 1;
+	if( MAP[id] == FARMLAND) return 1;
+	if( MAP[id] == POOL) return 1;
+	if( MAP[id] == BEACH) return 3;
+	if( MAP[id] == CITY) return 0;
+	if( MAP[id] == HILL) return 3;
 	return -1;
 }
 
@@ -1562,29 +1620,29 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 	double xx = CurPosition.x - (xx2/100)*100;
 	double yy = CurPosition.y - (yy2/100)*100;
 	XYPosition Right = CurPosition;
-	Right.x += 100 - xx;
+	Right.x += 101 - xx;
 //	Right.y = 0;
 	XYPosition Up_Right = CurPosition;
-	Up_Right.x += 100 - xx;
-	Up_Right.y += 100 - yy;
+	Up_Right.x += 101 - xx;
+	Up_Right.y += 101 - yy;
 	XYPosition Down_Right = CurPosition;
-	Down_Right.x += 100 - xx;
-	Down_Right.y -= yy;
+	Down_Right.x += 101 - xx;
+	Down_Right.y -= yy + 1;
 	XYPosition Up = CurPosition;
 //	Up.x = 0;
-	Up.y += 100 - yy;
+	Up.y += 101 - yy;
 	XYPosition Up_Left = CurPosition;
-	Up_Left.x -= xx;
-	Up_Left.y += 100 - yy;
+	Up_Left.x -= xx + 1;
+	Up_Left.y += 101 - yy;
 	XYPosition Left = CurPosition;
-	Left.x -= xx;
+	Left.x -= xx + 1;
 //	Left.y = 0;
 	XYPosition Down_Left = CurPosition;
-	Down_Left.x -= xx;
-	Down_Left.y -= yy;
+	Down_Left.x -= xx + 1;
+	Down_Left.y -= yy + 1;
 	XYPosition Down = CurPosition;
 //	Down.x = 0;
-	Down.y -= yy;
+	Down.y -= yy + 1;
 	if (len == 1) {
 		if(cur_id == tar_id + 1) return GetMoveAngle_small(O,Left,cur_id);
 		if (cur_id == tar_id - 1) return GetMoveAngle_small(O, Right, cur_id);
@@ -1656,7 +1714,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int cur_up_left = cur_id + 9;
 		int cur_up = cur_id + 10;
 		int v_left = getAreaLevel(cur_left);
-		int v_up_left = getAreaLevel(cur_up_left);
+		int v_up_left = getAreaLevel(cur_up_left) + getAreaLevel(cur_up) + getAreaLevel(cur_left);
 		int v_up = getAreaLevel(cur_up);
 
 		int mx = max(v_left, max(v_up_left, v_up));
@@ -1671,7 +1729,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int cur_down_left = cur_id - 11;
 		int cur_down = cur_id - 10;
 		int v_left = getAreaLevel(cur_left);
-		int v_down_left = getAreaLevel(cur_down_left);
+		int v_down_left = getAreaLevel(cur_down_left) + getAreaLevel(cur_down) + getAreaLevel(cur_left);
 		int v_down = getAreaLevel(cur_down);
 
 		int mx = max(v_left, max(v_down_left, v_down));
@@ -1686,7 +1744,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int cur_up_right = cur_id + 11;
 		int cur_up = cur_id + 10;
 		int v_right = getAreaLevel(cur_right);
-		int v_up_right = getAreaLevel(cur_up_right);
+		int v_up_right = getAreaLevel(cur_up_right) + getAreaLevel(cur_up) + getAreaLevel(cur_right);
 		int v_up = getAreaLevel(cur_up);
 
 		int mx = max(v_right, max(v_up_right, v_up));
@@ -1702,7 +1760,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 		int cur_down_right = cur_id - 9;
 		int v_right = getAreaLevel(cur_right);
 		int v_down = getAreaLevel(cur_down);
-		int v_down_right = getAreaLevel(cur_down_right);
+		int v_down_right = getAreaLevel(cur_down_right) + getAreaLevel(cur_down) + getAreaLevel(cur_right);
 
 		int mx = max(v_right, max(v_down, v_down_right));
 		if(v_right == mx) return GetMoveAngle_small(O, Right, cur_id);
