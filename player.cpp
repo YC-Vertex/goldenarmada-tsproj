@@ -14,18 +14,22 @@
 // 0 - MEDIC, 1 - SIGNALMAN, 2 - HACK, 3 - SNIPER
 #define AI_VOCATION MEDIC 
 // Debug Info
-std::fstream f("./playback/0.txt", std::ios::out);
-//std::fstream f;
+//std::fstream f("./playback/0.txt", std::ios::out);
+std::fstream f;
 
 #define REFRESH_PERIOD 5
 #define REFRESH_PHASE 4
+#define TURN (90.0 * (frame % 4))
 
 enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
-const GAMEPLAYMODE MODE = GAME;
+const GAMEPLAYMODE MODE = GAME_NO_OUTPUT;
 
 
-const XYPosition landing_point = {650 + rand() % 64, 650 + rand() % 64};
-// const XYPosition landing_point = {750, 650};
+const XYPosition landing_point = {
+	320 + rand() % 60 + (AI_VOCATION == MEDIC) * 100,
+	180 + rand() % 60
+};
+// const XYPosition landing_point = {650, 650};
 
 using namespace ts20;
 
@@ -414,7 +418,7 @@ void play_game() {
 
     // check gameplay mode
     if (MODE == TEST) {
-    	double angle = GetMoveAngle(info.self.xy_pos, {650, 650}) - info.self.view_angle;
+    	double angle = GetMoveAngle(info.self.xy_pos, {650, 550}) - info.self.view_angle;
     	aiBehavior = {Trek, angle, angle, 0, 0};
 
 
@@ -513,8 +517,6 @@ void play_game() {
     // Temporary
     bool decided = false;
 
-    if (!decided && AI_VOCATION == MEDIC)
-        decided = vDeadTeammate();
 	if (!aiFirstShotFlag && vGetWeaponDurabilitySum() < 6) {
 		if (!decided)
 			decided = vPickItem();
@@ -525,6 +527,8 @@ void play_game() {
         decided = vLoseHp();
 	if (!decided)
 		decided = vPickNearItem();
+	if (!decided && AI_VOCATION == MEDIC)
+		decided = vDeadTeammate();
     if (!decided && frame > 300)
         decided = vRunPoison();
     if (!decided)
@@ -655,8 +659,8 @@ void play_game() {
 /* ********** general definations ********** */
 XYPosition vPolarToXY(PolarPosition pos) {
 	XYPosition xy_pos = {
-		info.self.xy_pos.x + pos.distance * cos(pos.angle * M_PI / 180.0),
-		info.self.xy_pos.y + pos.distance * sin(pos.angle * M_PI / 180.0)
+		info.self.xy_pos.x + pos.distance * cos((pos.angle + info.self.view_angle) * M_PI / 180.0),
+		info.self.xy_pos.y + pos.distance * sin((pos.angle + info.self.move_angle) * M_PI / 180.0)
 	};
     return xy_pos;
 }
@@ -1078,7 +1082,20 @@ bool vLoseHp() {
 
 bool vDeadTeammate() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
-    // do something maybe
+
+	if (aiMedCase.size() != 0 && aiMedCase[0].type == FIRST_AID_CASE) {
+		for (int i = 0; i < aiFriend.size(); ++i) {
+			if (aiKV[aiFriend[i]].status == DEAD && aiKV[aiFriend[i]].rel_polar_pos.distance < 50) {
+				if (aiKV[aiFriend[i]].rel_polar_pos.distance < PICKUP_DISTANCE) {
+					aiBehavior = { MedTeam, 0.0, 0.0, aiFriend[i], 0 };
+				} else {
+					double angle = GetMoveAngle(info.self.xy_pos, aiKV[aiFriend[i]].abs_xy_pos) - info.self.view_angle;
+					aiBehavior = { Trek, angle, angle + TURN, 0, 0 };
+				}
+			}
+		}
+	}
+
     return (aiBehavior.act != Undecided);
 }
 
@@ -1094,7 +1111,7 @@ bool vRunPoison() {
 		double r = info.poison.next_radius * alpha;
 		if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r) {
 			double mAngle = GetMoveAngle(info.self.xy_pos, info.poison.next_center) - info.self.view_angle;
-			double vAngle = mAngle + 90.0 * (frame % 4);
+			double vAngle = mAngle + TURN;
 			aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
             return true;
 		}
@@ -1217,11 +1234,11 @@ bool vPickNearItem() {
 bool vWalkAround() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
-    double alpha = 0.16;
+    double alpha = 0.08 + 0.04 * (rand() % 101) / 101.0;
     double angleDT = 100.0;
     double r = info.poison.next_radius * alpha;
-    double mAngle = GetMoveAngle(info.poison.next_center, info.self.xy_pos) - info.self.view_angle;
-    double vAngle = mAngle + 90.0 * (frame % 4);
+    double mAngle = GetMoveAngle(info.self.xy_pos, info.poison.next_center) - info.self.view_angle;
+    double vAngle = mAngle + TURN;
     if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r) {
         aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
         return true;
@@ -1524,7 +1541,7 @@ int get_CityNodeId(double cur_x, double cur_y) {
 	double min_dis = 1e9; //inf
 	int id = -1;
 	bool flag = false;
-	if ((cur_x < 5 || cur_x > 95) || (cur_y < 5 || cur_y > 95)) flag = true;
+	if ((cur_x < 5.5 || cur_x > 94.5) || (cur_y < 5.5 || cur_y > 94.5)) flag = true;
 	for(int i = 0; i < CityNode; ++i) {
 		if (flag && (i >= 7 && i != 23)) continue;
 		if (!flag && (i == 0 || i == 2 || i == 4 || i == 23)) continue;
