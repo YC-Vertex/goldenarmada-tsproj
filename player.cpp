@@ -24,12 +24,13 @@ std::fstream f;
 enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
 const GAMEPLAYMODE MODE = GAME_NO_OUTPUT;
 
-
 const XYPosition landing_point = {
-	320 + rand() % 60 + (AI_VOCATION == MEDIC) * 100,
-	180 + rand() % 60
+	AI_VOCATION < 2 ? 320 + rand() % 160 : 650 + rand() % 100, 
+    AI_VOCATION < 2 ? 200 + rand() % 100 : 620 + rand() % 60
 };
 // const XYPosition landing_point = {650, 650};
+
+
 
 using namespace ts20;
 
@@ -231,9 +232,9 @@ std::vector<Item> aiFilterWeaponCase;   // temporary usage
 std::vector<Item> aiMedCase;
 std::vector<Item> aiFilterMedCase;      // temporary usage
 int aiArmor = VEST_1 - 1;
-std::unordered_map<ITEM, int> vWeaponPriority;	// pre-decided
-std::unordered_map<ITEM, int> vMedPriority;		// pre-decided
-std::unordered_map<ITEM, int> vAllPriority;		// pre-decided
+std::unordered_map<int, int> vWeaponPriority;	// pre-decided
+std::unordered_map<int, int> vMedPriority;		// pre-decided
+std::unordered_map<int, int> vAllPriority;		// pre-decided
 bool aiFilterWeaponFlag = false;
 bool aiFilterMedFlag = false;
 void vUpdateWeapon(Item);   // update when picked up or used
@@ -809,9 +810,10 @@ void vInitAllPriority() {
     std::vector<ITEM> temp = {
         FIST, TIGER_BILLOW_HAMMER, CROSSBOW, HAND_GUN,
         BONDAGE, SEMI_AUTOMATIC_RILE, SUBMACHINE_GUN,
-        SCOPE_2, VEST_1, SCOPE_4, VEST_2, INSULATED_CLOTHING, FIRST_AID_CASE,
+        SCOPE_2, SCOPE_4, SCOPE_8, FIRST_AID_CASE,
+        VEST_1, INSULATED_CLOTHING,
         SNIPER_RILFE, ASSAULT_RIFLE, SNIPER_BARRETT, MACHINE_GUN,
-        SCOPE_8, VEST_3
+        VEST_2, VEST_3, MUFFLER
     };
     if (AI_VOCATION == HACK)
         temp.push_back(CODE_CASE);
@@ -819,8 +821,11 @@ void vInitAllPriority() {
         temp.insert(temp.begin(), CODE_CASE);
 
     vAllPriority.clear();
+    for (int i = 0; i < ITEM_SZ; ++i) {
+        vAllPriority.insert({ i, 0 });
+    }
     for (int i = 0; i < temp.size(); ++i) {
-        vAllPriority.insert({temp[i], i});
+        vAllPriority[temp[i]] = i;
     }
 }
 
@@ -1112,7 +1117,7 @@ bool vRunPoison() {
 		if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r) {
 			double mAngle = GetMoveAngle(info.self.xy_pos, info.poison.next_center) - info.self.view_angle;
 			double vAngle = mAngle + TURN;
-			aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
+            aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
             return true;
 		}
 	}
@@ -1126,19 +1131,24 @@ bool vPickItem() {
     if (info.items.size() != 0) {
         // 先找到优先级最高的，没武器优先捡武器
         Item target = { 0, FIST, {0, 0}, 0 };
-        int max = 0;
+        double max = 0.0;
         int priTH = vAllPriority[BONDAGE];
 		double distTH = 8.0;
-		bool pFlag = false, wFlag = false, nwFlag = false;
+		bool pFlag = false;
 		bool lFlag = aiPrevAct[0].act == Trek && aiPrevAct[0].target_ID != 0;
+        bool noweaponFlag = aiWeaponCase[0].type == FIST;
+        bool lowweaponFlag = vGetWeaponDurabilitySum() < 20;
+        bool existweaponFlag = false;
 		for (int i = 0; i < info.items.size(); ++i) {
 			Item thisI = info.items[i];
+
 			// 直接捡最近的东西
 			if (thisI.polar_pos.distance < 1.0) {
 				target = thisI;
 				pFlag = true;
 				break;
 			}
+
 			// 如果上一步有目标就继续执行
 			if (lFlag) {
 				if (thisI.item_ID == aiPrevAct[0].target_ID) {
@@ -1149,37 +1159,37 @@ bool vPickItem() {
 					continue;
 				}
 			}
-			// 枪少优先捡枪
-			if (vGetWeaponDurabilitySum() < 20 && isWeapon(thisI.type) && thisI.type != TIGER_BILLOW_HAMMER) {
-				if (!nwFlag && aiWeaponCase[0].type == FIST) {
-					max = thisI.polar_pos.distance;
-					target = thisI;
-					nwFlag = true;
-					continue;
-				} else if (!nwFlag && !wFlag && thisI.polar_pos.distance <= distTH) {
-					max = vAllPriority[thisI.type];
-					target = thisI;
-					wFlag = true;
-					continue;
-				}
+
+            // 不能捡过远的东西
+            if (thisI.polar_pos.distance > distTH) continue;
+
+            // 没枪优先捡枪，枪少优先捡枪
+			if (isWeapon(thisI.type) && thisI.type != TIGER_BILLOW_HAMMER) {
+                existweaponFlag = true;
 			}
-			// 没枪优先捡枪
-			if (nwFlag) {
-				if (isWeapon(thisI.type) && thisI.polar_pos.distance < max) {
-					max = thisI.polar_pos.distance;
-					target = thisI;
-				}
-				continue;
-			}
-			// 只允许捡10格以内的物品
-			if (thisI.polar_pos.distance <= distTH) {
-				if (vAllPriority[thisI.type] > max) {
-					if (wFlag && !isWeapon(thisI.type))
-						continue;
-					max = vAllPriority[thisI.type];
-					target = thisI;
-				}
-			}
+
+            if (existweaponFlag) {
+                if (noweaponFlag) {
+                    if (fabs(max - 0.0) < 0.01)
+                        max = 1000;
+                    if (isWeapon(thisI.type) && thisI.polar_pos.distance < max) {
+                        max = thisI.polar_pos.distance;
+                        target = thisI;
+                        continue;
+                    }
+                } else if (lowweaponFlag) {
+                    if (vAllPriority[thisI.type] > max) {
+                        max = vAllPriority[thisI.type];
+                        target = thisI;
+                        continue;
+                    }
+                }
+            }
+
+            if (vAllPriority[thisI.type] > max) {
+                max = vAllPriority[thisI.type];
+                target = thisI;
+            }
         }
 
         // 判断优先级最高的要不要捡
@@ -1234,12 +1244,17 @@ bool vPickNearItem() {
 bool vWalkAround() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
+    XYPosition center = info.poison.next_center;
+    if (fabs(center.x - 0.0) > 0.1 && fabs(center.y - 0.0) > 0.1) {
+        center = { 500, 500 };
+    }
+
     double alpha = 0.08 + 0.04 * (rand() % 101) / 101.0;
     double angleDT = 100.0;
     double r = info.poison.next_radius * alpha;
-    double mAngle = GetMoveAngle(info.self.xy_pos, info.poison.next_center) - info.self.view_angle;
+    double mAngle = GetMoveAngle(info.self.xy_pos, center) - info.self.view_angle;
     double vAngle = mAngle + TURN;
-    if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r) {
+    if (vCalcDist(info.self.xy_pos, center) >= r * r) {
         aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
         return true;
     } else {
@@ -1399,25 +1414,28 @@ void vDetectPlayer(int index) {
         frame, tInfo.player_ID, value, threat, priority,
 		tInfo.vocation, tInfo.status,
         tInfo.move_angle, tInfo.view_angle, tInfo.move_speed,
-        tInfo.polar_pos, xy_pos,
+        tInfo.polar_pos, xy_pos
     };
 
     vCalcEnemyPriority(vInfo);
+
+    bool isFriend = false;
+    for (int i = 0; i < teammates.size(); ++i) {
+        if (tInfo.player_ID == teammates[i]) {
+            isFriend = true;
+            break;
+        }
+    }
 
     if (aiKV.find(tInfo.player_ID) != aiKV.end()) {
         aiKV[tInfo.player_ID] = vInfo;
     } else {
         aiKV.insert({tInfo.player_ID, vInfo});
+        if (isFriend)
+            aiFriend.push_back(tInfo.player_ID);
     }
-	bool isFriend = false;
-	for (int i = 0; i < teammates.size(); ++i) {
-		if (tInfo.player_ID == teammates[i]) {
-			isFriend = true;
-			break;
-		}
-	}
-	if (isFriend) aiFriend.push_back(tInfo.player_ID);
-	else vUpdateEnemy(tInfo.player_ID);
+	if (!isFriend)
+        vUpdateEnemy(tInfo.player_ID);
 }
 
 // update enemy queue according to priority
@@ -1427,6 +1445,7 @@ void vUpdateEnemy(int id) {
 	for (int i = 0; i < aiEnemy.size(); ++i) {
 		if (aiEnemy[i] == id) {
 			aiEnemy.erase(aiEnemy.begin() + i);
+            break;
 		}
 	}
 	for (int i = 0; i < aiEnemy.size(); ++i) {
@@ -1455,13 +1474,16 @@ void vLostEnemy() {
 			// Debug Info
 			if (MODE) f << "Enemy (id: " << id << ") lost in sight.\n";
 		}
-		if (aiKV[id].status == DEAD || aiKV[id].status == REAL_DEAD) {
-			aiEnemy.erase(aiEnemy.begin() + i);
-
-			// Debug Info
-			if (MODE) f << "Enemy (id: " << id << ") is dead.\n";
-		}
 	}
+    for (int i = 0; i < aiEnemy.size(); ++i) {
+        int id = aiEnemy[i];
+        if (aiKV[id].status == DEAD || aiKV[id].status == REAL_DEAD) {
+            aiEnemy.erase(aiEnemy.begin() + i);
+
+            // Debug Info
+            if (MODE) f << "Enemy (id: " << id << ") is dead.\n";
+        }
+    }
 }
 
 void vCalcEnemyPriority(vAiInfo & ai) {
@@ -1488,7 +1510,6 @@ void vCalcEnemyPriority(vAiInfo & ai) {
 			ai.threat = 25.0;
 			ai.value = 0.0;
 		}
-		
 	}
 	ai.priority = ai.value + ai.threat;
 }
@@ -1498,9 +1519,8 @@ void vCalcEnemyPriority(vAiInfo & ai) {
 // finding path begin (zms)
 
 int GetAreaId(XYPosition CurPosition) {
-	double mAngle = vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos);
-	int _x = CurPosition.x + (fabs(mAngle) > 90 ? 1.6: -1.6);
-	int _y = CurPosition.y + (mAngle < 0 ? 1.6 : -1.6);
+    int _x = CurPosition.x + (fabs(info.self.move_angle) > 90 ? 1.6 : -1.6);
+	int _y = CurPosition.y + (info.self.move_angle < 0 ? 1.6 : -1.6);
 	int q_x = _x / 100 , r_x = _x % 100;
 	int q_y = _y / 100 , r_y = _y % 100;
 	int id = q_y * 10 + q_x;
@@ -1559,6 +1579,7 @@ int get_HillNodeId(double cur_x,double cur_y) {
 	int id = -1;
 	for(int i = 0; i < HillNode; ++i) {
 		double dis = zms_dis(cur_x,cur_y,HillLoc[i][0],HillLoc[i][1]);
+        if (i == 3 && dis > 9.9) continue;
 		if(dis < min_dis) id = i, min_dis = dis;
 	}
 	return id;
@@ -1693,7 +1714,7 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 		vAngleScale(tmp);
 		double angle = fabs(tmp);
 
-		if (angle < 5 || angle > 355) return vCalcAngle(t, Cur);
+		if (angle < 2 || angle > 358) return vCalcAngle(t, Cur);
 		else return vCalcAngle(s, Cur);
 	}
 
