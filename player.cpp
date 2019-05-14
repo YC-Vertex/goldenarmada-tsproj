@@ -28,7 +28,8 @@ const XYPosition landing_point = {
 	AI_VOCATION < 2 ? 320 + rand() % 160 : 650 + rand() % 100, 
     AI_VOCATION < 2 ? 200 + rand() % 100 : 620 + rand() % 60
 };
-// const XYPosition landing_point = {650, 650};
+//const XYPosition landing_point = {450, 310};
+const XYPosition destination = {450, 550};
 
 
 
@@ -108,7 +109,6 @@ int CityLoc[CityNode][2] = {
     {92,  8}, {65,  8}, {35,  8}, { 8,  8},
 	{2, 98}
 };
-
 int CityAdj[CityNode][CityNode] = {
     { 0, 48, -1, -1, -1, -1, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
     {48,  0, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 16, 16, -1, -1},
@@ -135,7 +135,6 @@ int CityAdj[CityNode][CityNode] = {
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 24, -1, -1, -1, -1, -1, 27,  0, -1},
 	{-1, -1, -1, -1, -1, 48, 48, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0}
 };
-
 int CityNext[CityNode][CityNode]{
 	{  0,  1,  1,  1,  6,  6,  6,  6,  6,  6,  1,  1,  6,  6,  6,  6,  1,  1,  1,  1,  1,  1,  6,  6},
 	{  0,  1,  2, 20, 20, 20, 21, 21, 20, 21, 20, 20, 21, 20, 21, 21, 21, 20, 20, 20, 20, 21, 21, 21},
@@ -164,13 +163,11 @@ int CityNext[CityNode][CityNode]{
 };
 
 const int HillNode = 12;
-
 int HillLoc[HillNode][2] = {
-    { 0,  5}, {40, 10}, {70, 20}, {95,  5},
+    { 0,  5}, {40,  5}, {70, 25}, {95,  5},
     {95, 55}, {60, 55}, {25, 45}, { 5, 45},
     { 5, 70}, { 5, 95}, {60, 95}, {95, 95}
 };
-
 int HillAdj[HillNode][HillNode] = {
     { 0, 40, -1, 95, -1, -1, -1, 40, -1, -1, -1, -1},
     {40,  0, 31, 56, -1, -1, 38, -1, -1, -1, -1, -1},
@@ -185,10 +182,9 @@ int HillAdj[HillNode][HillNode] = {
     {-1, -1, -1, -1, -1, 40, 61, -1, -1, 55,  0, 35},
     {-1, -1, -1, -1, 40, -1, -1, -1, -1, -1, 35,  0}
 };
-
 int HillNext[HillNode][HillNode] = {
 	{  0,  1,  1,  3,  7,  7,  7,  7,  7,  7,  7,  7},
-	{  0,  1,  2,  3,  2,  2,  6,  6,  6,  6,  6,  6},
+	{  0,  1,  2,  3,  2,  2,  6,  6,  6,  6,  2,  6},
 	{  1,  1,  2,  1,  5,  5,  1,  1,  1,  1,  5,  5},
 	{  0,  1,  1,  3,  4,  4,  1,  1,  1,  1,  4,  4},
 	{  5,  5,  5,  3,  4,  5,  5,  5,  5,  5,  5, 11},
@@ -202,18 +198,37 @@ int HillNext[HillNode][HillNode] = {
 };
 
 const int FarmlandNode = 2;
-
 int FarmlandLoc[FarmlandNode][2] = {
 	{75, 35}, {75, 65}
 };
-
 int FarmlandAdj[FarmlandNode][FarmlandNode] = {
 	{ 0, 40},
 	{40,  0}
 };
-
 int FarmlandNext[FarmlandNode][FarmlandNode] = {
 	{0, 1}, {0, 1}
+};
+
+const int PoolNode = 6;
+int PoolLoc[PoolNode][2] = {
+    { 5,  5}, {55, 10}, {95, 30},
+    { 5, 90}, {65, 98}, {95, 70}
+};
+int PoolAdj[PoolNode][PoolNode] = {
+    { 0, 50, -1, 85, -1, -1},
+    {50,  0, 45, 94, 88, -1},
+    {-1, 45,  0, -1, -1, 40},
+    {85, 94, -1,  0, 60, -1},
+    {-1, 88, -1, 60,  0, 41},
+    {-1, -1, 40, -1, 41,  0}
+};
+int PoolNext[PoolNode][PoolNode] = {
+    {0, 1, 1, 3, 3, 1},
+    {0, 1, 2, 3, 4, 2},
+    {1, 1, 2, 5, 5, 5},
+    {0, 1, 1, 3, 4, 4},
+    {3, 1, 5, 3, 4, 5},
+    {2, 2, 2, 4, 4, 5}
 };
 
 int GetAreaId(XYPosition CurPosition);
@@ -419,8 +434,15 @@ void play_game() {
 
     // check gameplay mode
     if (MODE == TEST) {
-    	double angle = GetMoveAngle(info.self.xy_pos, {650, 550}) - info.self.view_angle;
-    	aiBehavior = {Trek, angle, angle, 0, 0};
+    	double angle = GetMoveAngle(info.self.xy_pos, destination) - info.self.view_angle;
+        aiBehavior = { Trek, angle, angle + TURN, 0, 0 };
+        /*
+        if (fabs(aiPrevAct[0].move_angle - angle) < 0.2) {
+            aiBehavior = { Trek, angle, angle + TURN, 0, 0 };
+        } else {
+            aiBehavior = { Turn, 0.0, angle + TURN, 0, 0 };
+        }
+        */
 
 
 
@@ -428,12 +450,12 @@ void play_game() {
 	    VSTATUS act = aiBehavior.act;
 
 		// No movement check
-		if (aiBehavior.act == Trek && aiPrevAct[0].act == Trek && isNoMove()) {
+		if (aiBehavior.act == Trek && (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Turn) && isNoMove()) {
 			// Debug Info
 			if (MODE) f << "No Movement!\n";
 			aiBehavior = aiPrevAct[0];
-			aiBehavior.view_angle = -43.21;
-			aiBehavior.move_angle = -43.21;
+			aiBehavior.view_angle = -98.76;
+			aiBehavior.move_angle = -98.76;
 		}
 
 	    // Check angle parameters
@@ -528,6 +550,24 @@ void play_game() {
         decided = vLoseHp();
 	if (!decided)
 		decided = vPickNearItem();
+    if (aiPrevAct[0].msg != 0) {
+        if (aiPrevAct[0].act == Trek && aiPrevAct[0].msg == -1) {
+            aiBehavior = { Turn, 0.0, 90.0, 0, -1 };
+            decided = true;
+        }
+        else if (aiPrevAct[0].act == Turn && aiPrevAct[0].msg == -1) {
+            aiBehavior = { Trek, -90.0, 90.0, 0, -2 };
+            decided = true;
+        }
+        else if (aiPrevAct[0].act == Trek && aiPrevAct[0].msg == -2) {
+            aiBehavior = { Turn, 0.0, 90.0, 0, -2 };
+            decided = true;
+        }
+        else if (aiPrevAct[0].act == Turn && aiPrevAct[0].msg == -2) {
+            aiBehavior = { Turn, 0.0, 90.0, 0, 0 };
+            decided = true;
+        }
+    }
 	if (!decided && AI_VOCATION == MEDIC)
 		decided = vDeadTeammate();
     if (!decided && frame > 300)
@@ -574,8 +614,8 @@ void play_game() {
 		// Debug Info
 		if (MODE) f << "No Movement!\n";
 		aiBehavior = aiPrevAct[0];
-		aiBehavior.view_angle = -43.21;
-		aiBehavior.move_angle = -43.21;
+		aiBehavior.view_angle = -98.76;
+		aiBehavior.move_angle = -98.76;
 	}
 
     // Check angle parameters
@@ -1036,8 +1076,7 @@ bool vEncounterEnemy() {
 bool vLoseHp() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
-    double healthTH = 40.0 - (aiArmor - VEST_1) * 10.0;	// low health threshold
-    double healthTG = info.self.hp_limit * 0.9;			// full health threshold
+    double healthTH = info.self.hp_limit * 0.8; // health threshold
 	double angleDT = 35.0;
 
     if (info.self.hp < healthTH) {
@@ -1050,27 +1089,14 @@ bool vLoseHp() {
             aiBehavior = { Retreat, 180.0, 0.0, 0, 0 };
             return true;
         } else {
-            if (aiMedCase.size() != 0) {
-                vFilterMed(FIRST_AID_CASE);
-                aiBehavior = { MedSelf, 0, 0, 0, 0 };
-                return true;
-            } else {
-                ;
-                // call for help maybe
-            }
-        }
-    }
-
-    // 如果之前状态为MedSelf，则继续MedSelf直到奶够为止
-    if (aiPrevAct[0].act == MedSelf) {
-        if (info.self.hp < healthTG) {
             // 有药就吃，BANDAGE足够奶满优先用BANDAGE（默认）
             if (aiMedCase.size() == 1) {
                 aiBehavior = { MedSelf, 0, 0, 0, 0 };
                 return true;
-            } else if (aiMedCase.size() == 2) {
+            }
+            else if (aiMedCase.size() == 2) {
                 double sup = -ITEM_DATA[aiMedCase[1].type].param * aiMedCase[1].durability;
-                double req = healthTG - info.self.hp;
+                double req = healthTH - info.self.hp;
                 if (req > sup)
                     vFilterMed(FIRST_AID_CASE);
                 aiBehavior = { MedSelf, 0, 0, 0, 0 };
@@ -1135,7 +1161,7 @@ bool vPickItem() {
         int priTH = vAllPriority[BONDAGE];
 		double distTH = 8.0;
 		bool pFlag = false;
-		bool lFlag = aiPrevAct[0].act == Trek && aiPrevAct[0].target_ID != 0;
+		bool lFlag = (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Turn) && aiPrevAct[0].target_ID != 0;
         bool noweaponFlag = aiWeaponCase[0].type == FIST;
         bool lowweaponFlag = vGetWeaponDurabilitySum() < 20;
         bool existweaponFlag = false;
@@ -1209,6 +1235,7 @@ bool vPickItem() {
             } else {
                 double angle = target.polar_pos.angle;
                 aiBehavior = { Trek, angle, angle, target.item_ID, 0 };
+                if (target.polar_pos.distance > 2.0) aiBehavior.msg = -1;
             }
             return true;
         } else {
@@ -1497,16 +1524,13 @@ void vCalcEnemyPriority(vAiInfo & ai) {
 		} else if (ai.vocation == SNIPER) {
 			ai.threat = 50.0;
 			ai.value = 25.0;
-		}
-		else if (ai.vocation == MEDIC) {
+		} else if (ai.vocation == MEDIC) {
 			ai.threat = 10.0;
 			ai.value = 100.0;
-		}
-		else if (ai.vocation == SIGNALMAN) {
+		} else if (ai.vocation == SIGNALMAN) {
 			ai.threat = 25.0;
 			ai.value = 60.0;
-		}
-		else {
+		} else {
 			ai.threat = 25.0;
 			ai.value = 0.0;
 		}
@@ -1534,10 +1558,10 @@ double GetMoveAngle(XYPosition CurPosition, XYPosition TargetPosition) {
 	}
 	int cur_id = GetAreaId(CurPosition);
 	int tar_id = GetAreaId(TargetPosition);
-	if(cur_id == tar_id)
-		return GetMoveAngle_small(CurPosition,TargetPosition,cur_id);
-	else
-		return GetMoveAngle_big(CurPosition,TargetPosition,cur_id,tar_id);
+    if (cur_id == tar_id)
+        return GetMoveAngle_small(CurPosition, TargetPosition, cur_id);
+    else
+        return GetMoveAngle_big(CurPosition, TargetPosition, cur_id, tar_id);
 
 }
 
@@ -1550,9 +1574,9 @@ double zms_dis(double x1, double y1, double x2, double y2) {
 int get_BeachNodeId(double cur_x, double cur_y) {
 	double min_dis = 1e9; //inf
 	int id = -1;
-	for(int i = 0; i < BeachNode; ++i) {
-		double dis = zms_dis(cur_x,cur_y,BeachLoc[i][0],BeachLoc[i][1]);
-		if(dis < min_dis) id = i, min_dis = dis;
+	for (int i = 0; i < BeachNode; ++i) {
+        double dis = zms_dis(cur_x, cur_y, BeachLoc[i][0], BeachLoc[i][1]);
+		if (dis < min_dis) id = i, min_dis = dis;
 	}
 	return id;
 }
@@ -1562,10 +1586,10 @@ int get_CityNodeId(double cur_x, double cur_y) {
 	int id = -1;
 	bool flag = false;
 	if ((cur_x < 5.5 || cur_x > 94.5) || (cur_y < 5.5 || cur_y > 94.5)) flag = true;
-	for(int i = 0; i < CityNode; ++i) {
+	for (int i = 0; i < CityNode; ++i) {
 		if (flag && (i >= 7 && i != 23)) continue;
 		if (!flag && (i == 0 || i == 2 || i == 4 || i == 23)) continue;
-		double dis = zms_dis(cur_x,cur_y,CityLoc[i][0],CityLoc[i][1]);
+        double dis = zms_dis(cur_x, cur_y, CityLoc[i][0], CityLoc[i][1]);
 		if (dis < min_dis) {
 			id = i;
 			min_dis = dis;
@@ -1577,10 +1601,10 @@ int get_CityNodeId(double cur_x, double cur_y) {
 int get_HillNodeId(double cur_x,double cur_y) {
 	double min_dis = 1e9; //inf
 	int id = -1;
-	for(int i = 0; i < HillNode; ++i) {
-		double dis = zms_dis(cur_x,cur_y,HillLoc[i][0],HillLoc[i][1]);
-        if (i == 3 && dis > 9.9) continue;
-		if(dis < min_dis) id = i, min_dis = dis;
+	for (int i = 0; i < HillNode; ++i) {
+        double dis = zms_dis(cur_x, cur_y, HillLoc[i][0], HillLoc[i][1]);
+        if (i == 2 && dis > 12.0) continue;
+		if (dis < min_dis) id = i, min_dis = dis;
 	}
 	return id;
 }
@@ -1592,6 +1616,18 @@ int get_FarmlandNodeId(double cur_x, double cur_y) {
 		return 1;
 }
 
+int get_PoolNodeId(double cur_x, double cur_y) {
+    double min_dis = 1e9; //inf
+    int id = -1;
+    for (int i = 0; i < PoolNode; ++i) {
+        double dis = zms_dis(cur_x, cur_y, PoolLoc[i][0], PoolLoc[i][1]);
+        if (cur_x <= 30 && i % 3 != 0) continue;
+        if (cur_x > 30 && cur_x < 75 && i % 3 != 1) continue;
+        if (cur_x >= 75 && i % 3 != 2) continue;
+        if (dis < min_dis) id = i, min_dis = dis;
+    }
+    return id;
+}
 
 double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int id) {
 	int delta_x = id % 10 * 100;
@@ -1611,19 +1647,11 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 
 	AREA type = MAP[id];
 
-	if(type == GRASS
-	|| type == ROADA
-	|| type == ROADB
-	|| type == FOREST) {
-		return vCalcAngle(Tar,Cur);
+	if (type == GRASS || type == ROADA || type == ROADB || type == FOREST) {
+		return vCalcAngle(Tar, Cur);
 	}
 
-	if(type == FARMLAND
-	|| type == POOL) {
-		return vCalcAngle(Tar,Cur);
-	}
-
-	if(type == BEACH) {
+	else if (type == BEACH) {
 		double dis = sqrt(vCalcDist(Tar, Cur));
 		if (dis < 2) return vCalcAngle(Tar, Cur);
 		int cur_BeachNodeId = get_BeachNodeId(cur_x,cur_y);
@@ -1650,12 +1678,12 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 		vAngleScale(tmp);
 		double angle = fabs(tmp);
 
-		if (angle < 2 || angle > 358) return vCalcAngle(t, Cur);
+		if (angle < 2.5 || angle > 357.5) return vCalcAngle(t, Cur);
 		else return vCalcAngle(s, Cur);
 		
 	}
 
-	if(type == CITY) {
+	else if (type == CITY) {
 		double dis = sqrt(vCalcDist(Tar, Cur));
 		//if (dis < 2) return vCalcAngle(Tar, Cur);
 		int cur_CityNodeId = get_CityNodeId(cur_x, cur_y);
@@ -1687,11 +1715,12 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 		else return vCalcAngle(s, Cur);
 	}
 
-	if(type == HILL) {
+	else if (type == HILL) {
 		double dis = sqrt(vCalcDist(Tar, Cur));
 		if (dis < 2) return vCalcAngle(Tar, Cur);
 		int cur_HillNodeId = get_HillNodeId(cur_x, cur_y);
 		int tar_HillNodeId = get_HillNodeId(tar_x, tar_y);
+        if (MODE) f << "curNode: " << cur_HillNodeId << " tarNode: " << tar_HillNodeId << std::endl;
 
 		XYPosition node[HillNode];
 		for (int i = 0; i < HillNode; ++i)
@@ -1714,11 +1743,11 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 		vAngleScale(tmp);
 		double angle = fabs(tmp);
 
-		if (angle < 2 || angle > 358) return vCalcAngle(t, Cur);
+		if (angle < 2.5 || angle > 357.5) return vCalcAngle(t, Cur);
 		else return vCalcAngle(s, Cur);
 	}
 
-	if (type == FARMLAND) {
+	else if (type == FARMLAND) {
 		double dis = sqrt(vCalcDist(Tar, Cur));
 		if (dis < 2 || (Tar.x <= 75 && Cur.x <= 75)) return vCalcAngle(Tar, Cur);
 		int cur_FarmlandNodeId = get_FarmlandNodeId(cur_x, cur_y);
@@ -1745,9 +1774,47 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 		vAngleScale(tmp);
 		double angle = fabs(tmp);
 
-		if (angle < 2 || angle > 358) return vCalcAngle(t, Cur);
+		if (angle < 2.5 || angle > 357.5) return vCalcAngle(t, Cur);
 		else return vCalcAngle(s, Cur);
 	}
+
+    else if (type == POOL) {
+        double dis = sqrt(vCalcDist(Tar, Cur));
+        if (dis < 2) return vCalcAngle(Tar, Cur);
+        int cur_PoolNodeId = get_PoolNodeId(cur_x, cur_y);
+        int tar_PoolNodeId = get_PoolNodeId(tar_x, tar_y);
+
+        if (MODE) f << cur_PoolNodeId << " " << tar_PoolNodeId << std::endl;
+
+        XYPosition node[PoolNode];
+        for (int i = 0; i < PoolNode; ++i)
+            node[i].x = PoolLoc[i][0], node[i].y = PoolLoc[i][1];
+        XYPosition s = node[cur_PoolNodeId];
+        XYPosition t;
+        if (cur_PoolNodeId == tar_PoolNodeId) {
+            t = Tar;
+        }
+        else {
+            if (PoolAdj[cur_PoolNodeId][tar_PoolNodeId] != -1) {
+
+                t = node[tar_PoolNodeId];
+            }
+            else {
+                t = node[PoolNext[cur_PoolNodeId][tar_PoolNodeId]];
+            }
+        }
+        double tmp = vCalcAngle(Cur, t) - vCalcAngle(s, t);
+        vAngleScale(tmp);
+        double angle = fabs(tmp);
+
+        if (angle < 2.5 || angle > 357.5) return vCalcAngle(t, Cur);
+        else return vCalcAngle(s, Cur);
+
+    }
+
+    else {
+        return vCalcAngle(Tar, Cur);
+    }
 }
 
 int getAreaLevel(int id) {
@@ -1756,7 +1823,7 @@ int getAreaLevel(int id) {
 	if( MAP[id] == ROADA) return 3;
 	if( MAP[id] == ROADB) return 3;
 	if( MAP[id] == FOREST) return 1;
-	if( MAP[id] == FARMLAND) return 2;
+	if( MAP[id] == FARMLAND) return 0;
 	if( MAP[id] == POOL) return 0;
 	if( MAP[id] == BEACH) return 2;
 	if( MAP[id] == CITY) return 0;
@@ -1778,39 +1845,46 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 	O = CurPosition;
 	int xx2 = floor(CurPosition.x);
 	int yy2 = floor(CurPosition.y);
-	double xx = CurPosition.x - (xx2/100)*100;
-	double yy = CurPosition.y - (yy2/100)*100;
-	XYPosition Right = CurPosition;
-	Right.x += 102 - xx;
-//	Right.y = 0;
+    double xx = CurPosition.x - (xx2 / 100) * 100;
+    double yy = CurPosition.y - (yy2 / 100) * 100;
+
+    XYPosition Right = CurPosition;
+    Right.x += 102 - xx;
+    XYPosition Left = CurPosition;
+    Left.x -= xx + 2;
+    XYPosition Up = CurPosition;
+    Up.y += 102 - yy;
+    XYPosition Down = CurPosition;
+    Down.y -= yy + 2;
 	XYPosition Up_Right = CurPosition;
 	Up_Right.x += 102 - xx;
 	Up_Right.y += 102 - yy;
+    XYPosition Up_Left = CurPosition;
+    Up_Left.x -= xx + 2;
+    Up_Left.y += 102 - yy;
 	XYPosition Down_Right = CurPosition;
 	Down_Right.x += 102 - xx;
 	Down_Right.y -= yy + 2;
-	XYPosition Up = CurPosition;
-//	Up.x = 0;
-	Up.y += 102 - yy;
-	XYPosition Up_Left = CurPosition;
-	Up_Left.x -= xx + 2;
-	Up_Left.y += 102 - yy;
-	XYPosition Left = CurPosition;
-	Left.x -= xx + 2;
-//	Left.y = 0;
 	XYPosition Down_Left = CurPosition;
 	Down_Left.x -= xx + 2;
 	Down_Left.y -= yy + 2;
-	XYPosition Down = CurPosition;
-//	Down.x = 0;
-	Down.y -= yy + 2;
+
 	if (len == 1) {
-		if(cur_id == tar_id + 1) return GetMoveAngle_small(O,Left,cur_id);
-		if (cur_id == tar_id - 1) return GetMoveAngle_small(O, Right, cur_id);
-		if (cur_id == tar_id + 10) return GetMoveAngle_small(O, Down, cur_id);
-		if (cur_id == tar_id -10) return GetMoveAngle_small(O, Up, cur_id);
+        if (cur_id == tar_id + 1) {
+            if (MAP[cur_id - 1] == FARMLAND) {
+                if (vCalcDist(info.self.xy_pos, { 0, 65 }) < vCalcDist(info.self.xy_pos, { 0, 35 })) {
+                    return GetMoveAngle_small(O, { -2, 65 }, cur_id);
+                } else {
+                    return GetMoveAngle_small(O, { -2, 35 }, cur_id);
+                }
+            }
+            return GetMoveAngle_small(O, Left, cur_id);
+        }
+        if (cur_id == tar_id - 1) return GetMoveAngle_small(O, Right, cur_id);
+        if (cur_id == tar_id + 10) return GetMoveAngle_small(O, Down, cur_id);
+        if (cur_id == tar_id - 10) return GetMoveAngle_small(O, Up, cur_id);
 	}
-	if( cur_x <= tar_x && cur_y == tar_y) {
+    if (cur_x <= tar_x && cur_y == tar_y) {
 		int cur_right = cur_id + 1;
 		int cur_up_right = cur_id + 11;
 		int cur_down_right = cur_id - 9;
@@ -1825,7 +1899,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 
 	}
 	
-	if( cur_x >= tar_x && cur_y == tar_y) {
+    if (cur_x >= tar_x && cur_y == tar_y) {
 		int cur_left = cur_id - 1;
 		int cur_up_left = cur_id + 9;
 		int cur_down_left = cur_id - 11;
@@ -1842,7 +1916,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 
 	}
 	
-	if( cur_x == tar_x && cur_y <= tar_y) {
+	if (cur_x == tar_x && cur_y <= tar_y) {
 		int cur_up = cur_id + 10;
 		int cur_up_right = cur_id + 11;
 		int cur_up_left = cur_id + 9;
@@ -1857,7 +1931,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 
 	}
 	
-	if( cur_x == tar_x && cur_y >= tar_y) {
+	if (cur_x == tar_x && cur_y >= tar_y) {
 		int cur_down = cur_id - 10;
 		int cur_down_left = cur_id - 11;
 		int cur_down_right = cur_id - 9;
@@ -1872,7 +1946,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 
 	}
 	
-	if( cur_x >= tar_x && cur_y <= tar_y) {
+	if (cur_x >= tar_x && cur_y <= tar_y) {
 		int cur_left = cur_id - 1;
 		int cur_up_left = cur_id + 9;
 		int cur_up = cur_id + 10;
@@ -1889,7 +1963,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 
 	}
 	
-	if( cur_x >= tar_x && cur_y >= tar_y) {
+	if (cur_x >= tar_x && cur_y >= tar_y) {
 		int cur_left = cur_id - 1;
 		int cur_down_left = cur_id - 11;
 		int cur_down = cur_id - 10;
@@ -1906,7 +1980,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 
 	}
 	
-	if( cur_x <= tar_x && cur_y <= tar_y) {
+	if (cur_x <= tar_x && cur_y <= tar_y) {
 		int cur_right = cur_id + 1;
 		int cur_up_right = cur_id + 11;
 		int cur_up = cur_id + 10;
@@ -1921,7 +1995,7 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 
 	}
 	
-	if( cur_x <= tar_x && cur_y >= tar_y) {
+	if (cur_x <= tar_x && cur_y >= tar_y) {
 		int cur_right = cur_id + 1;
 		int cur_down = cur_id - 10;
 		int cur_down_right = cur_id - 9;
