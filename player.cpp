@@ -24,13 +24,12 @@ std::fstream f;
 enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
 const GAMEPLAYMODE MODE = GAME_NO_OUTPUT;
 
-/*
+
 const XYPosition landing_point = {
-	AI_VOCATION < 2 ? 320 + rand() % 160 : 650 + rand() % 100, 
-    AI_VOCATION < 2 ? 180 + rand() % 100 : 620 + rand() % 60
+	AI_VOCATION >= 2 ? 420 + rand() % 120 : 820 + rand() % 60, 
+    AI_VOCATION >= 2 ? 320 + rand() % 60 : 120 + rand() % 60
 };
-*/
-const XYPosition landing_point = { 200 + rand() % 400, 400 + rand() % 400};
+//const XYPosition landing_point = { 200 + rand() % 400, 400 + rand() % 400};
 //const XYPosition landing_point = {450, 310};
 const XYPosition destination = {450, 550};
 
@@ -169,8 +168,8 @@ int CityNext[CityNode][CityNode]{
 
 const int HillNode = 12;
 int HillLoc[HillNode][2] = {
-    { 0,  5}, {40,  5}, {70, 25}, {95,  5},
-    {95, 55}, {60, 55}, {25, 45}, { 5, 45},
+    { 3,  5}, {40,  5}, {70, 25}, {95,  5},
+    {95, 55}, {60, 55}, {25, 45}, { 3, 45},
     { 5, 70}, { 5, 95}, {60, 95}, {95, 95}
 };
 int HillAdj[HillNode][HillNode] = {
@@ -784,7 +783,7 @@ void vInitWeaponPriority() {
 
 void vInitMedPriority() {
 	std::vector<ITEM> temp = {
-        FIRST_AID_CASE, BONDAGE
+        BONDAGE, FIRST_AID_CASE
     };
 
     vMedPriority.clear();
@@ -797,11 +796,11 @@ void vInitMedPriority() {
 void vInitAllPriority() {
     std::vector<ITEM> temp = {
         FIST, TIGER_BILLOW_HAMMER, CROSSBOW, HAND_GUN,
+        SCOPE_2, SCOPE_4, SCOPE_8, MUFFLER,
         BONDAGE, SEMI_AUTOMATIC_RILE, SUBMACHINE_GUN,
-        SCOPE_2, SCOPE_4, SCOPE_8, FIRST_AID_CASE,
-        VEST_1, INSULATED_CLOTHING,
+        VEST_1, INSULATED_CLOTHING, FIRST_AID_CASE,
         SNIPER_RILFE, ASSAULT_RIFLE, SNIPER_BARRETT, MACHINE_GUN,
-        VEST_2, VEST_3, MUFFLER
+        VEST_2, VEST_3
     };
     if (AI_VOCATION == HACK)
         temp.push_back(CODE_CASE);
@@ -832,7 +831,9 @@ inline bool isMed(ITEM m) {
 int vGetWeaponDurabilitySum() {
 	int sum = 0;
 	for (int i = 0; i < aiWeaponCase.size(); ++i) {
-		if (aiWeaponCase[i].type != FIST && aiWeaponCase[i].type != TIGER_BILLOW_HAMMER)
+		if (aiWeaponCase[i].type != FIST && 
+            aiWeaponCase[i].type != TIGER_BILLOW_HAMMER &&
+            aiWeaponCase[i].type != CROSSBOW)
 			sum += aiWeaponCase[i].durability;
 	}
 	return sum;
@@ -983,19 +984,69 @@ bool vEncounterEnemy() {
     double angleDT = 35.0;      // change in direction
     double trekTH = 50.0;
 
-    // 发现敌人，并且敌人value大于阈值，则Attack
-    if (aiEnemy.size() != 0 && aiKV[aiEnemy[0]].value > valueTH) {
+    OtherInfo enemy;
+    enemy.player_ID = -1;
+    double minDist = 1000.0;
+    for (int i = 0; i < info.others.size(); ++i) {
+        if (info.others[i].status != DEAD && info.others[i].status != REAL_DEAD) {
+            bool isFriend = false;
+            for (int j = 0; j < teammates.size(); ++j) {
+                if (info.others[i].player_ID == teammates[j]) {
+                    isFriend = true;
+                    break;
+                }
+            }
+            if (!isFriend && info.others[i].polar_pos.distance < minDist) {
+                enemy = info.others[i];
+                minDist = enemy.polar_pos.distance;
+            }
+        }
+    }
+
+    // 发现敌人
+    if (enemy.player_ID != -1) {
         if (info.self.attack_cd != 0) {
 			if (aiPrevAct[0].act == Attack && aiWeaponCase[0].type != FIST) {
-				aiBehavior = { Trek, aiKV[aiEnemy[0]].rel_polar_pos.angle, aiKV[aiEnemy[0]].rel_polar_pos.angle, 0, 0 };
+				aiBehavior = { Trek, enemy.polar_pos.angle, enemy.polar_pos.angle, 0, 0 };
 			}
             // Debug Info
 			if (MODE) f << "Attack cd!\n";
         } else {
-			if (aiWeaponCase[0].type != FIST) {
-				aiBehavior = { Attack, aiKV[aiEnemy[0]].rel_polar_pos.angle, 0.0, 0, 0 };
+            vFilterWeapon(enemy.polar_pos.distance);
+			if (aiFilterWeaponFlag && aiWeaponCase[0].type != FIST) {
+				aiBehavior = { Attack, enemy.polar_pos.angle, 0.0, 0, 0 };
 				return true;
 			}
+        }
+    }
+
+    return (aiBehavior.act != Undecided);
+}
+
+/*
+bool vEncounterEnemy() {
+    aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
+
+    float valueTH = -100.0;     // enemy value thres
+    float threatTH = 100.0;     // enemy threat thres
+
+    double angleDT = 35.0;      // change in direction
+    double trekTH = 50.0;
+
+    // 发现敌人，并且敌人value大于阈值，则Attack
+    if (aiEnemy.size() != 0 && aiKV[aiEnemy[0]].value > valueTH) {
+        if (info.self.attack_cd != 0) {
+            if (aiPrevAct[0].act == Attack && aiWeaponCase[0].type != FIST) {
+                aiBehavior = { Trek, aiKV[aiEnemy[0]].rel_polar_pos.angle, aiKV[aiEnemy[0]].rel_polar_pos.angle, 0, 0 };
+            }
+            // Debug Info
+            if (MODE) f << "Attack cd!\n";
+        }
+        else {
+            if (aiWeaponCase[0].type != FIST) {
+                aiBehavior = { Attack, aiKV[aiEnemy[0]].rel_polar_pos.angle, 0.0, 0, 0 };
+                return true;
+            }
         }
     }
 
@@ -1011,6 +1062,7 @@ bool vEncounterEnemy() {
 
     return (aiBehavior.act != Undecided);
 }
+*/
 
 // 当掉血时（现在这里时当血量过低时）
 bool vLoseHp() {
@@ -1019,10 +1071,14 @@ bool vLoseHp() {
     double healthTH = info.self.hp_limit * 0.6; // health threshold
 
     if (info.self.hp < healthTH) {
-        if (aiMedCase.size() == 0) {
+        if (aiMedCase.size() == 0 || info.self.attack_cd != 0) {
             return false;
+        } else {
+            aiBehavior = { MedSelf, 0, 0, 0, 0 };
+            return true;
         }
 
+        /*
         if (aiEnemy.size() != 0) {
             vFilterMed(FIRST_AID_CASE);
             aiBehavior = { MedSelf, 0, 0, 0, 0 };
@@ -1042,6 +1098,7 @@ bool vLoseHp() {
                 return true;
             }
         }
+        */
     }
 
     return (aiBehavior.act != Undecided);
@@ -1052,7 +1109,7 @@ bool vDeadTeammate() {
 
 	if (aiMedCase.size() != 0 && aiMedCase[0].type == FIRST_AID_CASE) {
 		for (int i = 0; i < aiFriend.size(); ++i) {
-			if (aiKV[aiFriend[i]].status == DEAD && aiKV[aiFriend[i]].rel_polar_pos.distance < 50) {
+			if (aiKV[aiFriend[i]].status == DEAD && aiKV[aiFriend[i]].rel_polar_pos.distance < 100) {
 				if (aiKV[aiFriend[i]].rel_polar_pos.distance < PICKUP_DISTANCE) {
 					aiBehavior = { MedTeam, 0.0, 0.0, aiFriend[i], 0 };
 				} else {
@@ -1074,7 +1131,7 @@ bool vRunPoison() {
         && fabs(info.poison.next_center.y - 0.0) > 0.1;
 
     if (isPoison) {
-		double alpha = (frame > 300 && frame < 1000) ? 0.4 : 0.7;
+		double alpha = (frame > 300 && frame < 1000) ? 0.5 : 0.7;
 		double r = info.poison.next_radius * alpha;
 		if (vCalcDist(info.self.xy_pos, info.poison.next_center) >= r * r) {
 			double mAngle = GetMoveAngle(info.self.xy_pos, info.poison.next_center) - info.self.view_angle;
@@ -1109,6 +1166,9 @@ bool vPickItem() {
         bool existweaponFlag = false;
 		for (int i = 0; i < info.items.size(); ++i) {
 			Item thisI = info.items[i];
+
+            if (thisI.type == CODE_CASE && AI_VOCATION != HACK)
+                continue;
 
 			// 直接捡最近的东西
 			if (thisI.polar_pos.distance < 1.0) {
@@ -1164,8 +1224,7 @@ bool vPickItem() {
         if (
             !pFlag && (max >= priTH ||
             isWeapon(target.type) && target.type != FIST ||
-            isArmor(target.type) && target.type >= aiArmor ||
-            isMed(target.type) && (aiMedCase.size() == 0 || aiMedCase[0].durability <= 8))
+            isArmor(target.type) || isMed(target.type))
         ) pFlag = true;
 
         // 如果要捡，不在范围内则Trek，在范围内则Pick
@@ -1195,9 +1254,12 @@ bool vPickNearItem() {
 		for (int i = 0; i < info.items.size(); ++i) {
 			Item thisI = info.items[i];
 
+            if (thisI.type == CODE_CASE && AI_VOCATION != HACK)
+                continue;
+
 			if (thisI.polar_pos.distance < 1.0) {
 				double angle = thisI.polar_pos.angle;
-				if (thisI.polar_pos.distance < PICKUP_DISTANCE && (thisI.type != CODE_CASE || AI_VOCATION == HACK))
+				if (thisI.polar_pos.distance < PICKUP_DISTANCE)
 					aiBehavior = { Pick, 0, 0, thisI.item_ID, 0 };
 				else 
 					aiBehavior = { Trek, angle, angle, thisI.item_ID, 0 };
@@ -1803,7 +1865,7 @@ int getAreaLevel(int id) {
 	if( MAP[id] == ROADA) return 3;
 	if( MAP[id] == ROADB) return 3;
 	if( MAP[id] == FOREST) return 1;
-	if( MAP[id] == FARMLAND) return 0;
+	if( MAP[id] == FARMLAND) return 1;
 	if( MAP[id] == POOL) return 0;
 	if( MAP[id] == BEACH) return 2;
 	if( MAP[id] == CITY) return 0;
