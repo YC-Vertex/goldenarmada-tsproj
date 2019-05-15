@@ -61,6 +61,9 @@ void vAngleScale(double &);
 inline double vCalcDist(XYPosition, XYPosition);
 inline double vCalcAngle(XYPosition, XYPosition);
 
+void mainfunc();
+
+
 
 // finding path begin (zms)
 
@@ -448,97 +451,7 @@ void play_game() {
         }
         */
 
-    	// stage 2: execute ai actions
-	    VSTATUS act = aiBehavior.act;
-
-		// No movement check
-        if (isNoMove() &&
-            (aiBehavior.act == Trek || aiBehavior.act == Retreat || aiBehavior.act == Turn) &&
-            (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Retreat || aiPrevAct[0].act == Turn)) {
-            // Debug Info
-            if (MODE) f << "No Movement!\n";
-            aiBehavior = aiPrevAct[0];
-            aiBehavior.view_angle = -65.43;
-            aiBehavior.move_angle = -65.43;
-            aiBehavior.msg = 0;
-        }
-
-	    // Check angle parameters
-		vAngleScale(aiBehavior.move_angle);
-		vAngleScale(aiBehavior.view_angle);
-
-        if (act == Attack) {
-            Item weapon = aiFilterWeaponFlag ? aiFilterWeaponCase[0] : aiWeaponCase[0];
-            shoot(weapon.type, aiBehavior.move_angle);
-            weapon.durability = -1;
-            vUpdateWeapon(weapon);
-            aiFirstShotFlag = true;
-            // Debug Info
-            if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
-        }
-        else if (act == MedSelf) {
-            Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
-            shoot(med.type, 0);
-            med.durability = -1;
-            vUpdateMed(med);
-            // Debug Info
-            if (MODE) f << "MedSelf: " << med.type << std::endl;
-        }
-        else if (act == MedTeam) {
-            Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
-            shoot(med.type, 0, aiBehavior.target_ID);
-            med.durability = -1;
-            vUpdateMed(med);
-            // Debug Info
-            if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
-        }
-        else if (act == Radio) {
-            radio(aiBehavior.target_ID, aiBehavior.msg);
-            // Debug Info
-            if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
-        }
-        else if (act == Retreat) {
-            // Temporary 
-            move(aiBehavior.move_angle, aiBehavior.view_angle);
-        }
-        else if (act == Pick) {
-            pickup(aiBehavior.target_ID);
-            for (int i = 0; i < info.items.size(); ++i) {
-                if (info.items[i].item_ID == aiBehavior.target_ID) {
-                    if (isWeapon(info.items[i].type)) {
-                        vUpdateWeapon(info.items[i]);
-                    }
-                    else if (isMed(info.items[i].type)) {
-                        vUpdateMed(info.items[i]);
-                    }
-                    else if (isArmor(info.items[i].type)) {
-                        ITEM a = info.items[i].type;
-                        aiArmor = aiArmor > a ? aiArmor : a;
-                    }
-                    break;
-                }
-            }
-        }
-        else if (act == Turn) {
-            move(0, aiBehavior.view_angle, NOMOVE);
-            // Debug Info
-            if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
-        }
-        else if (act == Trek) {
-            move(aiBehavior.move_angle, aiBehavior.view_angle);
-            // Debug Info
-            if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
-        }
-        else {
-            ;// do nothing
-        }
-
-        // after processing
-        vClearFilter();
-        vClearBehavior();
-        aiPrevSelf = info.self;
-        // Debug Info
-        if (MODE) f << "-\n--\n-\n";
+        mainfunc();
 
         return;
     }
@@ -622,91 +535,7 @@ void play_game() {
     }
     // Debug Info End
 
-
-
-    // stage 2: execute ai actions
-    VSTATUS act = aiBehavior.act;
-
-	// No movement check
-    if (isNoMove() &&
-        (aiBehavior.act == Trek || aiBehavior.act == Retreat || aiBehavior.act == Turn) &&
-        (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Retreat || aiPrevAct[0].act == Turn)) {
-		// Debug Info
-		if (MODE) f << "No Movement!\n";
-		aiBehavior = aiPrevAct[0];
-        aiBehavior.view_angle = -65.43;
-        aiBehavior.move_angle = -65.43;
-        aiBehavior.msg = 0;
-	}
-
-    // Check angle parameters
-	vAngleScale(aiBehavior.move_angle);
-	vAngleScale(aiBehavior.view_angle);
-
-    if (act == Attack) {
-        Item weapon = aiFilterWeaponFlag ? aiFilterWeaponCase[0] : aiWeaponCase[0];
-        shoot(weapon.type, aiBehavior.move_angle);
-        weapon.durability = -1;
-        vUpdateWeapon(weapon);
-		aiFirstShotFlag = true;
-		// Debug Info
-        if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
-    } else if (act == MedSelf) {
-        Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
-        shoot(med.type, 0);
-        med.durability = -1;
-        vUpdateMed(med);
-		// Debug Info
-		if (MODE) f << "MedSelf: " << med.type << std::endl;
-    } else if (act == MedTeam) {
-        Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
-        shoot(med.type, 0, aiBehavior.target_ID);
-        med.durability = -1;
-        vUpdateMed(med);
-		// Debug Info
-		if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
-    } else if (act == Radio) {
-        radio(aiBehavior.target_ID, aiBehavior.msg);
-		// Debug Info
-		if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
-    } else if (act == Retreat) {
-        // Temporary 
-		move(aiBehavior.move_angle, aiBehavior.view_angle);
-    } else if (act == Pick) {
-        pickup(aiBehavior.target_ID);
-        for (int i = 0; i < info.items.size(); ++i) {
-            if (info.items[i].item_ID == aiBehavior.target_ID) {
-                if (isWeapon(info.items[i].type)) {
-                    vUpdateWeapon(info.items[i]);
-                } else if (isMed(info.items[i].type)) {
-                    vUpdateMed(info.items[i]);
-                } else if (isArmor(info.items[i].type)) {
-                    ITEM a = info.items[i].type;
-                    aiArmor = aiArmor > a ? aiArmor : a;
-                }
-                break;
-            }
-        }
-    } else if (act == Turn) {
-        move(0, aiBehavior.view_angle, NOMOVE);
-		// Debug Info
-		if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
-    } else if (act == Trek) {
-        move(aiBehavior.move_angle, aiBehavior.view_angle);
-		// Debug Info
-		if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
-    } else {
-		;// do nothing
-    }
-
-
-
-	// after processing
-	vClearFilter();
-	vClearBehavior();
-    aiPrevSelf = info.self;
-	// Debug Info
-	if (MODE) f << "-\n--\n-\n";
+    mainfunc();
 
 	return;
 }
@@ -745,6 +574,104 @@ inline double vCalcDist(XYPosition pos1, XYPosition pos2) {
 
 inline double vCalcAngle(XYPosition tgt, XYPosition crt) {
 	return atan2(tgt.y - crt.y, tgt.x - crt.x) * 180.0 / M_PI;
+}
+
+void mainfunc() {
+    // stage 2: execute ai actions
+    VSTATUS act = aiBehavior.act;
+
+    // No movement check
+    if (isNoMove() &&
+        (aiBehavior.act == Trek || aiBehavior.act == Retreat || aiBehavior.act == Turn) &&
+        (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Retreat || aiPrevAct[0].act == Turn)) {
+        // Debug Info
+        if (MODE) f << "No Movement!\n";
+        aiBehavior = aiPrevAct[0];
+        aiBehavior.view_angle = -65.43;
+        aiBehavior.move_angle = -65.43;
+        aiBehavior.msg = 0;
+    }
+
+    // Check angle parameters
+    vAngleScale(aiBehavior.move_angle);
+    vAngleScale(aiBehavior.view_angle);
+
+    if (act == Attack) {
+        Item weapon = aiFilterWeaponFlag ? aiFilterWeaponCase[0] : aiWeaponCase[0];
+        shoot(weapon.type, aiBehavior.move_angle);
+        weapon.durability = -1;
+        vUpdateWeapon(weapon);
+        aiFirstShotFlag = true;
+        // Debug Info
+        if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
+    }
+    else if (act == MedSelf) {
+        Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
+        shoot(med.type, 0);
+        med.durability = -1;
+        vUpdateMed(med);
+        // Debug Info
+        if (MODE) f << "MedSelf: " << med.type << std::endl;
+    }
+    else if (act == MedTeam) {
+        Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
+        shoot(med.type, 0, aiBehavior.target_ID);
+        med.durability = -1;
+        vUpdateMed(med);
+        // Debug Info
+        if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
+    }
+    else if (act == Radio) {
+        radio(aiBehavior.target_ID, aiBehavior.msg);
+        // Debug Info
+        if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
+    }
+    else if (act == Retreat) {
+        // Temporary 
+        move(aiBehavior.move_angle, aiBehavior.view_angle);
+    }
+    else if (act == Pick) {
+        pickup(aiBehavior.target_ID);
+        for (int i = 0; i < info.items.size(); ++i) {
+            if (info.items[i].item_ID == aiBehavior.target_ID) {
+                if (isWeapon(info.items[i].type)) {
+                    vUpdateWeapon(info.items[i]);
+                }
+                else if (isMed(info.items[i].type)) {
+                    vUpdateMed(info.items[i]);
+                }
+                else if (isArmor(info.items[i].type)) {
+                    ITEM a = info.items[i].type;
+                    aiArmor = aiArmor > a ? aiArmor : a;
+                }
+                break;
+            }
+        }
+    }
+    else if (act == Turn) {
+        move(0, aiBehavior.view_angle, NOMOVE);
+        // Debug Info
+        if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
+    }
+    else if (act == Trek) {
+        move(aiBehavior.move_angle, aiBehavior.view_angle);
+        // Debug Info
+        if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
+    }
+    else {
+        ;// do nothing
+    }
+
+
+
+    // after processing
+    vClearFilter();
+    vClearBehavior();
+    aiPrevSelf = info.self;
+    // Debug Info
+    if (MODE) f << "-\n--\n-\n";
+
+    return;
 }
 
 
