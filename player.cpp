@@ -14,7 +14,7 @@
 // 0 - MEDIC, 1 - SIGNALMAN, 2 - HACK, 3 - SNIPER
 #define AI_VOCATION MEDIC 
 // Debug Info
-//std::fstream f("./playback/0.txt", std::ios::out);
+//std::fstream f("./playback/1.txt", std::ios::out);
 std::fstream f;
 
 #define REFRESH_PERIOD 5
@@ -24,10 +24,13 @@ std::fstream f;
 enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
 const GAMEPLAYMODE MODE = GAME_NO_OUTPUT;
 
+/*
 const XYPosition landing_point = {
 	AI_VOCATION < 2 ? 320 + rand() % 160 : 650 + rand() % 100, 
-    AI_VOCATION < 2 ? 200 + rand() % 100 : 620 + rand() % 60
+    AI_VOCATION < 2 ? 180 + rand() % 100 : 620 + rand() % 60
 };
+*/
+const XYPosition landing_point = { 200 + rand() % 400, 400 + rand() % 400};
 //const XYPosition landing_point = {450, 310};
 const XYPosition destination = {450, 550};
 
@@ -57,7 +60,6 @@ XYPosition vPolarToXY(PolarPosition);
 void vAngleScale(double &);
 inline double vCalcDist(XYPosition, XYPosition);
 inline double vCalcAngle(XYPosition, XYPosition);
-
 
 
 // finding path begin (zms)
@@ -199,7 +201,7 @@ int HillNext[HillNode][HillNode] = {
 
 const int FarmlandNode = 2;
 int FarmlandLoc[FarmlandNode][2] = {
-	{75, 35}, {75, 65}
+	{75, 25}, {75, 75}
 };
 int FarmlandAdj[FarmlandNode][FarmlandNode] = {
 	{ 0, 40},
@@ -232,6 +234,7 @@ int PoolNext[PoolNode][PoolNode] = {
 };
 
 int GetAreaId(XYPosition CurPosition);
+int GetAreaId(XYPosition CurPosition, bool nothing);
 double GetMoveAngle(XYPosition CurPosition, XYPosition TargetPosition);
 double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int id);
 double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int cur_id, int tar_id);
@@ -358,6 +361,7 @@ void vCalcEnemyPriority(vAiInfo &);
 void play_game() {
     // update game info
 	update_info();
+    info.self.move_angle = vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos);
 
     // Debug Info
     if (MODE) {
@@ -444,78 +448,90 @@ void play_game() {
         }
         */
 
-
-
     	// stage 2: execute ai actions
 	    VSTATUS act = aiBehavior.act;
 
 		// No movement check
-		if (aiBehavior.act == Trek && (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Turn) && isNoMove()) {
-			// Debug Info
-			if (MODE) f << "No Movement!\n";
-			aiBehavior = aiPrevAct[0];
-			aiBehavior.view_angle = -98.76;
-			aiBehavior.move_angle = -98.76;
-		}
+        if (isNoMove() &&
+            (aiBehavior.act == Trek || aiBehavior.act == Retreat || aiBehavior.act == Turn) &&
+            (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Retreat || aiPrevAct[0].act == Turn)) {
+            // Debug Info
+            if (MODE) f << "No Movement!\n";
+            aiBehavior = aiPrevAct[0];
+            aiBehavior.view_angle = -65.43;
+            aiBehavior.move_angle = -65.43;
+            aiBehavior.msg = 0;
+        }
 
 	    // Check angle parameters
 		vAngleScale(aiBehavior.move_angle);
 		vAngleScale(aiBehavior.view_angle);
 
-	    if (act == Attack) {
-	        Item weapon = aiFilterWeaponFlag ? aiFilterWeaponCase[0] : aiWeaponCase[0];
-	        shoot(weapon.type, aiBehavior.move_angle);
-	        weapon.durability = -1;
-	        vUpdateWeapon(weapon);
-			// Debug Info
-	        if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
-	    } else if (act == MedSelf) {
-	        Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
-	        shoot(med.type, 0);
-	        med.durability = -1;
-	        vUpdateMed(med);
-			// Debug Info
-			if (MODE) f << "MedSelf: " << med.type << std::endl;
-	    } else if (act == MedTeam) {
-	        Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
-	        shoot(med.type, 0, aiBehavior.target_ID);
-	        med.durability = -1;
-	        vUpdateMed(med);
-			// Debug Info
-			if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
-	    } else if (act == Radio) {
-	        radio(aiBehavior.target_ID, aiBehavior.msg);
-			// Debug Info
-			if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
-	    } else if (act == Retreat) {
-	        // Temporary 
-	        move(aiBehavior.move_angle, aiBehavior.view_angle);
-	    } else if (act == Pick) {
-	        pickup(aiBehavior.target_ID);
-	        for (int i = 0; i < info.items.size(); ++i) {
-	            if (info.items[i].item_ID == aiBehavior.target_ID) {
-	                if (isWeapon(info.items[i].type)) {
-	                    vUpdateWeapon(info.items[i]);
-	                } else if (isMed(info.items[i].type)) {
-	                    vUpdateMed(info.items[i]);
-	                } else if (isArmor(info.items[i].type)) {
-	                    ITEM a = info.items[i].type;
-	                    aiArmor = aiArmor > a ? aiArmor : a;
-	                }
-	                break;
-	            }
-	        }
-	    } else if (act == Turn) {
-	        move(0, aiBehavior.view_angle, NOMOVE);
-			// Debug Info
-			if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
-	    } else if (act == Trek) {
-	        move(aiBehavior.move_angle, aiBehavior.view_angle);
-			// Debug Info
-			if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
-	    } else {
-			;// do nothing
-	    }
+        if (act == Attack) {
+            Item weapon = aiFilterWeaponFlag ? aiFilterWeaponCase[0] : aiWeaponCase[0];
+            shoot(weapon.type, aiBehavior.move_angle);
+            weapon.durability = -1;
+            vUpdateWeapon(weapon);
+            aiFirstShotFlag = true;
+            // Debug Info
+            if (MODE) f << "Attack: " << weapon.type << " " << aiBehavior.move_angle << std::endl;
+        }
+        else if (act == MedSelf) {
+            Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
+            shoot(med.type, 0);
+            med.durability = -1;
+            vUpdateMed(med);
+            // Debug Info
+            if (MODE) f << "MedSelf: " << med.type << std::endl;
+        }
+        else if (act == MedTeam) {
+            Item med = aiFilterMedFlag ? aiFilterMedCase[0] : aiMedCase[0];
+            shoot(med.type, 0, aiBehavior.target_ID);
+            med.durability = -1;
+            vUpdateMed(med);
+            // Debug Info
+            if (MODE) f << "MedTeam: " << aiBehavior.target_ID << std::endl;
+        }
+        else if (act == Radio) {
+            radio(aiBehavior.target_ID, aiBehavior.msg);
+            // Debug Info
+            if (MODE) f << "Radio: " << aiBehavior.msg << std::endl;
+        }
+        else if (act == Retreat) {
+            // Temporary 
+            move(aiBehavior.move_angle, aiBehavior.view_angle);
+        }
+        else if (act == Pick) {
+            pickup(aiBehavior.target_ID);
+            for (int i = 0; i < info.items.size(); ++i) {
+                if (info.items[i].item_ID == aiBehavior.target_ID) {
+                    if (isWeapon(info.items[i].type)) {
+                        vUpdateWeapon(info.items[i]);
+                    }
+                    else if (isMed(info.items[i].type)) {
+                        vUpdateMed(info.items[i]);
+                    }
+                    else if (isArmor(info.items[i].type)) {
+                        ITEM a = info.items[i].type;
+                        aiArmor = aiArmor > a ? aiArmor : a;
+                    }
+                    break;
+                }
+            }
+        }
+        else if (act == Turn) {
+            move(0, aiBehavior.view_angle, NOMOVE);
+            // Debug Info
+            if (MODE) f << "Turn: " << aiBehavior.view_angle << std::endl;
+        }
+        else if (act == Trek) {
+            move(aiBehavior.move_angle, aiBehavior.view_angle);
+            // Debug Info
+            if (MODE) f << "Trek: " << aiBehavior.move_angle << " " << aiBehavior.view_angle << std::endl;
+        }
+        else {
+            ;// do nothing
+        }
 
         // after processing
         vClearFilter();
@@ -554,18 +570,22 @@ void play_game() {
         if (aiPrevAct[0].act == Trek && aiPrevAct[0].msg == -1) {
             aiBehavior = { Turn, 0.0, 90.0, 0, -1 };
             decided = true;
+            if (MODE) f << "step 2 (+90)\n";
         }
         else if (aiPrevAct[0].act == Turn && aiPrevAct[0].msg == -1) {
             aiBehavior = { Trek, -90.0, 90.0, 0, -2 };
             decided = true;
+            if (MODE) f << "step 3 (+180)\n";
         }
         else if (aiPrevAct[0].act == Trek && aiPrevAct[0].msg == -2) {
             aiBehavior = { Turn, 0.0, 90.0, 0, -2 };
             decided = true;
+            if (MODE) f << "step 4 (+270)\n";
         }
         else if (aiPrevAct[0].act == Turn && aiPrevAct[0].msg == -2) {
             aiBehavior = { Turn, 0.0, 90.0, 0, 0 };
             decided = true;
+            if (MODE) f << "step 5 (+360)\n";
         }
     }
 	if (!decided && AI_VOCATION == MEDIC)
@@ -608,14 +628,15 @@ void play_game() {
     VSTATUS act = aiBehavior.act;
 
 	// No movement check
-	if (isNoMove() && 
-		(aiBehavior.act == Trek || aiBehavior.act == Retreat) &&
-		(aiPrevAct[0].act == Trek || aiPrevAct[0].act == Retreat)) {
+    if (isNoMove() &&
+        (aiBehavior.act == Trek || aiBehavior.act == Retreat || aiBehavior.act == Turn) &&
+        (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Retreat || aiPrevAct[0].act == Turn)) {
 		// Debug Info
 		if (MODE) f << "No Movement!\n";
 		aiBehavior = aiPrevAct[0];
-		aiBehavior.view_angle = -98.76;
-		aiBehavior.move_angle = -98.76;
+        aiBehavior.view_angle = -65.43;
+        aiBehavior.move_angle = -65.43;
+        aiBehavior.msg = 0;
 	}
 
     // Check angle parameters
@@ -981,10 +1002,10 @@ void vCheckItemStatus() {
 		else if (isMed(item.type)) {
 			bool isFind = false;
 			for (int j = 0; j < aiMedCase.size(); ++j) {
-				if (item.type == aiWeaponCase[j].type) {
+				if (item.type == aiMedCase[j].type) {
 					isFind = true;
 					int realDur = item.durability;
-					int curDur = aiWeaponCase[j].durability;
+					int curDur = aiMedCase[j].durability;
 					if (realDur != curDur) {
 						Item temp = item;
 						temp.durability = realDur - curDur;
@@ -1029,43 +1050,35 @@ void vClearBehavior() {
 bool vEncounterEnemy() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
-    float valueTH = -100.0;      // enemy value thres
-    float threatTH = 100.0;      // enemy threat thres
-    bool eFlag = false;         // if exist enemy in sight
-    vAiInfo enemyVA, enemyDG;   // valuable, dangerous
+    float valueTH = -100.0;     // enemy value thres
+    float threatTH = 100.0;     // enemy threat thres
 
-    double angleDT = 35.0;  // change in direction
+    double angleDT = 35.0;      // change in direction
     double trekTH = 50.0;
 
-    if (aiEnemy.size() != 0) {
-        eFlag = true;
-        enemyVA = aiKV[aiEnemy[0]];
-        enemyDG = aiKV[aiEnemy[aiEnemy.size() - 1]];
-    }
-
     // 发现敌人，并且敌人value大于阈值，则Attack
-    if (eFlag && enemyVA.value > valueTH) {
+    if (aiEnemy.size() != 0 && aiKV[aiEnemy[0]].value > valueTH) {
         if (info.self.attack_cd != 0) {
 			if (aiPrevAct[0].act == Attack && aiWeaponCase[0].type != FIST) {
-				aiBehavior = { Trek, enemyVA.rel_polar_pos.angle, enemyVA.rel_polar_pos.angle, 0, 0 };
+				aiBehavior = { Trek, aiKV[aiEnemy[0]].rel_polar_pos.angle, aiKV[aiEnemy[0]].rel_polar_pos.angle, 0, 0 };
 			}
             // Debug Info
 			if (MODE) f << "Attack cd!\n";
         } else {
 			if (aiWeaponCase[0].type != FIST) {
-				aiBehavior = { Attack, enemyVA.rel_polar_pos.angle, 0.0, 0, 0 };
+				aiBehavior = { Attack, aiKV[aiEnemy[0]].rel_polar_pos.angle, 0.0, 0, 0 };
 				return true;
 			}
         }
     }
 
     // 发现敌人，并且敌人value小于阈值或threat大于阈值，则Retreat
-    if (eFlag && enemyVA.value <= valueTH) {
-        aiBehavior = { Retreat, enemyVA.rel_polar_pos.angle + angleDT + 180.0, enemyVA.rel_polar_pos.angle + angleDT, 0, 0 };
+    if (aiEnemy.size() != 0 && aiKV[aiEnemy[0]].value <= valueTH) {
+        aiBehavior = { Retreat, aiKV[aiEnemy[0]].rel_polar_pos.angle + angleDT + 180.0, aiKV[aiEnemy[0]].rel_polar_pos.angle + angleDT, 0, 0 };
         return true;
     }
-    if (eFlag && enemyDG.threat > threatTH) {
-        aiBehavior = { Retreat, enemyDG.rel_polar_pos.angle + angleDT + 180.0, enemyDG.rel_polar_pos.angle + angleDT, 0, 0 };
+    if (aiEnemy.size() != 0 && aiKV[aiEnemy[0]].threat > threatTH) {
+        aiBehavior = { Retreat, aiKV[aiEnemy[0]].rel_polar_pos.angle + angleDT + 180.0, aiKV[aiEnemy[0]].rel_polar_pos.angle + angleDT, 0, 0 };
         return true;
     }
 
@@ -1076,17 +1089,16 @@ bool vEncounterEnemy() {
 bool vLoseHp() {
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
-    double healthTH = info.self.hp_limit * 0.8; // health threshold
-	double angleDT = 35.0;
+    double healthTH = info.self.hp_limit * 0.6; // health threshold
 
     if (info.self.hp < healthTH) {
-        // 如果在作战状态，则Retreat
-        // 如果在未知状态，则MedSelf
-        if (aiPrevAct[0].act == Attack) {
-            aiBehavior = { Retreat, angleDT + 180.0, angleDT, 0, 0 };
-            return true;
-        } else if (aiPrevAct[0].act == Retreat) {
-            aiBehavior = { Retreat, 180.0, 0.0, 0, 0 };
+        if (aiMedCase.size() == 0) {
+            return false;
+        }
+
+        if (aiEnemy.size() != 0) {
+            vFilterMed(FIRST_AID_CASE);
+            aiBehavior = { MedSelf, 0, 0, 0, 0 };
             return true;
         } else {
             // 有药就吃，BANDAGE足够奶满优先用BANDAGE（默认）
@@ -1101,9 +1113,6 @@ bool vLoseHp() {
                     vFilterMed(FIRST_AID_CASE);
                 aiBehavior = { MedSelf, 0, 0, 0, 0 };
                 return true;
-            } else {
-                ;
-                // call for help maybe
             }
         }
     }
@@ -1144,6 +1153,12 @@ bool vRunPoison() {
 			double mAngle = GetMoveAngle(info.self.xy_pos, info.poison.next_center) - info.self.view_angle;
 			double vAngle = mAngle + TURN;
             aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
+            if (MAP[GetAreaId(info.self.xy_pos, true)] != CITY) {
+                aiBehavior.view_angle = aiBehavior.move_angle;
+                aiBehavior.msg = -1;
+            }
+            // Debug Info
+            if (MODE) f << "Run Poison.\n";
             return true;
 		}
 	}
@@ -1159,7 +1174,7 @@ bool vPickItem() {
         Item target = { 0, FIST, {0, 0}, 0 };
         double max = 0.0;
         int priTH = vAllPriority[BONDAGE];
-		double distTH = 8.0;
+		double distTH = 16.0;
 		bool pFlag = false;
 		bool lFlag = (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Turn) && aiPrevAct[0].target_ID != 0;
         bool noweaponFlag = aiWeaponCase[0].type == FIST;
@@ -1255,7 +1270,7 @@ bool vPickNearItem() {
 
 			if (thisI.polar_pos.distance < 1.0) {
 				double angle = thisI.polar_pos.angle;
-				if (thisI.polar_pos.distance < PICKUP_DISTANCE)
+				if (thisI.polar_pos.distance < PICKUP_DISTANCE && (thisI.type != CODE_CASE || AI_VOCATION == HACK))
 					aiBehavior = { Pick, 0, 0, thisI.item_ID, 0 };
 				else 
 					aiBehavior = { Trek, angle, angle, thisI.item_ID, 0 };
@@ -1269,11 +1284,13 @@ bool vPickNearItem() {
 
 // 在周围随便走走
 bool vWalkAround() {
+    // Debug Info
+    if (MODE) f << "Walk Around.\n";
     aiBehavior = { Undecided, 0.0, 0.0, 0, 0 };
 
     XYPosition center = info.poison.next_center;
-    if (fabs(center.x - 0.0) > 0.1 && fabs(center.y - 0.0) > 0.1) {
-        center = { 500, 500 };
+    if (fabs(center.x - 0.0) < 0.1 && fabs(center.y - 0.0) < 0.1) {
+        center = { 550.0, 550.0 };
     }
 
     double alpha = 0.08 + 0.04 * (rand() % 101) / 101.0;
@@ -1282,11 +1299,34 @@ bool vWalkAround() {
     double mAngle = GetMoveAngle(info.self.xy_pos, center) - info.self.view_angle;
     double vAngle = mAngle + TURN;
     if (vCalcDist(info.self.xy_pos, center) >= r * r) {
+        // Debug Info
+        if (MODE) f << "Center: " << center.x << " " << center.y << std::endl;
         aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
+        if (MAP[GetAreaId(info.self.xy_pos, true)] != CITY) {
+            aiBehavior.view_angle = aiBehavior.move_angle;
+            aiBehavior.msg = -1;
+        }
         return true;
     } else {
-        // 如果离毒中心太近就向外走一点
+        // Debug Info
+        if (MODE) f << "Close to center.\n";
+        /*
         aiBehavior = { Trek, mAngle - angleDT, vAngle - angleDT, 0, 0 };
+        if (MAP[GetAreaId(info.self.xy_pos, true)] != CITY) aiBehavior.msg = -1;
+        */
+        if (vGetWeaponDurabilitySum() > 25 - frame * 4 / 100) {
+            aiBehavior = { Turn, 0.0, info.self.view_angle + TURN, 0, 0 };
+        } else {
+            center.x += (center.x > info.self.xy_pos.x) ? 80 : -80;
+            center.y += (center.y > info.self.xy_pos.y) ? 80 : -80;
+            mAngle = GetMoveAngle(info.self.xy_pos, center) - info.self.view_angle;
+            vAngle = mAngle + TURN;
+            aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
+            if (MAP[GetAreaId(info.self.xy_pos, true)] != CITY) {
+                aiBehavior.view_angle = aiBehavior.move_angle;
+                aiBehavior.msg = -1;
+            }
+        }
         return true;
     }
 
@@ -1551,13 +1591,22 @@ int GetAreaId(XYPosition CurPosition) {
 	return id;
 }
 
+int GetAreaId(XYPosition CurPosition, bool nothing) {
+    int _x = CurPosition.x;
+    int _y = CurPosition.y;
+    int q_x = _x / 100, r_x = _x % 100;
+    int q_y = _y / 100, r_y = _y % 100;
+    int id = q_y * 10 + q_x;
+    return id;
+}
+
 double GetMoveAngle(XYPosition CurPosition, XYPosition TargetPosition) {
 	// directly
 	if(false) {
 		return vCalcAngle(TargetPosition,CurPosition);
 	}
 	int cur_id = GetAreaId(CurPosition);
-	int tar_id = GetAreaId(TargetPosition);
+	int tar_id = GetAreaId(TargetPosition, true);
     if (cur_id == tar_id)
         return GetMoveAngle_small(CurPosition, TargetPosition, cur_id);
     else
@@ -1688,7 +1737,8 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 		//if (dis < 2) return vCalcAngle(Tar, Cur);
 		int cur_CityNodeId = get_CityNodeId(cur_x, cur_y);
 		int tar_CityNodeId = get_CityNodeId(tar_x, tar_y);
-		if (MODE) f << "curNode: "<< cur_CityNodeId << " tarNode: " << tar_CityNodeId << std::endl;
+        // Debug Info
+		if (MODE) f << "(City) curNode: "<< cur_CityNodeId << " tarNode: " << tar_CityNodeId << std::endl;
 
 		XYPosition node[CityNode];
 		for (int i = 0; i < CityNode; ++i)
@@ -1720,7 +1770,8 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 		if (dis < 2) return vCalcAngle(Tar, Cur);
 		int cur_HillNodeId = get_HillNodeId(cur_x, cur_y);
 		int tar_HillNodeId = get_HillNodeId(tar_x, tar_y);
-        if (MODE) f << "curNode: " << cur_HillNodeId << " tarNode: " << tar_HillNodeId << std::endl;
+        // Debug Info
+        if (MODE) f << "(Hill) curNode: " << cur_HillNodeId << " tarNode: " << tar_HillNodeId << std::endl;
 
 		XYPosition node[HillNode];
 		for (int i = 0; i < HillNode; ++i)
@@ -1752,6 +1803,8 @@ double GetMoveAngle_small(XYPosition CurPosition, XYPosition TargetPosition, int
 		if (dis < 2 || (Tar.x <= 75 && Cur.x <= 75)) return vCalcAngle(Tar, Cur);
 		int cur_FarmlandNodeId = get_FarmlandNodeId(cur_x, cur_y);
 		int tar_FarmlandNodeId = get_FarmlandNodeId(tar_x, tar_y);
+        // Debug Info
+        if (MODE) f << "(Farmland) curNode: " << cur_FarmlandNodeId << " tarNode: " << tar_FarmlandNodeId << std::endl;
 
 		XYPosition node[FarmlandNode];
 		for (int i = 0; i < FarmlandNode; ++i)
@@ -1868,6 +1921,9 @@ double GetMoveAngle_big(XYPosition CurPosition, XYPosition TargetPosition, int c
 	XYPosition Down_Left = CurPosition;
 	Down_Left.x -= xx + 2;
 	Down_Left.y -= yy + 2;
+
+    // Debug Info
+    if (MODE) f << "(big) " << cur_id << " -> " << tar_id << std::endl;
 
 	if (len == 1) {
         if (cur_id == tar_id + 1) {
