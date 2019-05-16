@@ -24,11 +24,10 @@ std::fstream f;
 enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
 const GAMEPLAYMODE MODE = GAME_NO_OUTPUT;
 
-const XYPosition LP[4] = {
-    {735, 350}, {755, 350},
-    {135, 250}, {155, 250}
+const XYPosition LP[2][4] = {
+    {{735, 207}, {765, 207}, {135, 107}, {165, 107}},
+    {{235, 707}, {265, 707}, {235, 767}, {265, 767}}
 };
-const XYPosition landing_point = LP[AI_VOCATION];
 //const XYPosition landing_point = { 200 + rand() % 400, 400 + rand() % 400};
 //const XYPosition landing_point = {450, 310};
 const XYPosition destination = {450, 550};
@@ -263,6 +262,7 @@ void vInitWeaponPriority();
 void vInitMedPriority();
 void vInitAllPriority();
 inline bool isWeapon(ITEM);
+inline bool isWeapon(ITEM w, bool nothing);
 inline bool isArmor(ITEM);
 inline bool isMed(ITEM);
 int vGetWeaponDurabilitySum();
@@ -364,6 +364,7 @@ void play_game() {
     // update game info
 	update_info();
     info.self.move_angle = vCalcAngle(info.self.xy_pos, aiPrevSelf.xy_pos);
+    XYPosition landing_point = LP[int(floor(over_pos.x)) % 2][AI_VOCATION];
 
     // Debug Info
     if (MODE) {
@@ -796,8 +797,8 @@ void vInitMedPriority() {
 void vInitAllPriority() {
     std::vector<ITEM> temp = {
         FIST, TIGER_BILLOW_HAMMER, CROSSBOW, HAND_GUN,
-        SCOPE_2, SCOPE_4, SCOPE_8, MUFFLER,
-        BONDAGE, SEMI_AUTOMATIC_RILE, 
+        SCOPE_4, SCOPE_8, MUFFLER, 
+        BONDAGE, SEMI_AUTOMATIC_RILE, SCOPE_2,
         VEST_1, INSULATED_CLOTHING, FIRST_AID_CASE,
         ASSAULT_RIFLE, SUBMACHINE_GUN, MACHINE_GUN,
         SNIPER_RILFE, VEST_2, SNIPER_BARRETT, VEST_3
@@ -818,6 +819,10 @@ void vInitAllPriority() {
 
 inline bool isWeapon(ITEM w) {
 	return ITEM_DATA[w].type == WEAPON;
+}
+
+inline bool isWeapon(ITEM w, bool nothing) {
+    return (ITEM_DATA[w].type == WEAPON && w != TIGER_BILLOW_HAMMER && w != CROSSBOW && w != HAND_GUN);
 }
 
 inline bool isArmor(ITEM a) {
@@ -1159,12 +1164,15 @@ bool vPickItem() {
         Item target = { 0, FIST, {0, 0}, 0 };
         double max = 0.0;
         int priTH = vAllPriority[BONDAGE];
-		double distTH = 16.0;
+		double distTH = 20.0;
 		bool pFlag = false;
-		bool lFlag = (aiPrevAct[0].act == Trek || aiPrevAct[0].act == Turn) && aiPrevAct[0].target_ID != 0;
-        bool noweaponFlag = aiWeaponCase[0].type == FIST;
-        bool lowweaponFlag = vGetWeaponDurabilitySum() < 20;
+		bool lFlag = ((aiPrevAct[0].act == Trek || aiPrevAct[0].act == Turn) && aiPrevAct[0].target_ID != 0);
+        bool noweaponFlag = (frame < 200 || aiWeaponCase[0].type == FIST);
+        bool lowweaponFlag = (vGetWeaponDurabilitySum() < 20);
         bool existweaponFlag = false;
+
+        if (MODE) f << noweaponFlag << std::endl;
+
 		for (int i = 0; i < info.items.size(); ++i) {
 			Item thisI = info.items[i];
 
@@ -1193,28 +1201,30 @@ bool vPickItem() {
             if (thisI.polar_pos.distance > distTH) continue;
 
             // 没枪优先捡枪，枪少优先捡枪
-			if (isWeapon(thisI.type) && 
-                thisI.type != TIGER_BILLOW_HAMMER && 
-                thisI.type != CROSSBOW && 
-                thisI.type != HAND_GUN) {
+			if (!existweaponFlag && isWeapon(thisI.type, true)) {
+                if (MODE) f << ">>> gun! <<<\n";
                 existweaponFlag = true;
+                if (noweaponFlag)
+                    max = 1000;
+                else if (lowweaponFlag)
+                    max = 0;
 			}
 
             if (existweaponFlag) {
                 if (noweaponFlag) {
-                    if (fabs(max - 0.0) < 0.01)
-                        max = 1000;
-                    if (isWeapon(thisI.type) && thisI.polar_pos.distance < max) {
+                    if (isWeapon(thisI.type, true) && thisI.polar_pos.distance < max) {
                         max = thisI.polar_pos.distance;
                         target = thisI;
-                        continue;
+                        pFlag = true;
                     }
+                    continue;
                 } else if (lowweaponFlag) {
                     if (vAllPriority[thisI.type] > max) {
                         max = vAllPriority[thisI.type];
                         target = thisI;
-                        continue;
+                        pFlag = true;
                     }
+                    continue;
                 }
             }
 
@@ -1227,20 +1237,20 @@ bool vPickItem() {
         // 判断优先级最高的要不要捡
         if (
             !pFlag && (max >= priTH ||
-            isWeapon(target.type) && target.type != FIST ||
+            isWeapon(target.type, true) && target.type != FIST ||
             isArmor(target.type) || isMed(target.type))
         ) pFlag = true;
 
         // 如果要捡，不在范围内则Trek，在范围内则Pick
         if (pFlag) {
             // Debug Info
-			if (MODE) f << "Target item: " << target.polar_pos.distance << " " << target.polar_pos.angle << std::endl;
+			if (MODE) f << "Target item: " << target.polar_pos.distance << " " << target.polar_pos.angle << " " << isWeapon(target.type, true) << std::endl;
             if (target.polar_pos.distance <= PICKUP_DISTANCE) {
                 aiBehavior = { Pick, 0, 0, target.item_ID, 0 };
             } else {
                 double angle = target.polar_pos.angle;
                 aiBehavior = { Trek, angle, angle, target.item_ID, 0 };
-                if (target.polar_pos.distance > 2.0) aiBehavior.msg = -1;
+                if (target.polar_pos.distance > 3.2) aiBehavior.msg = -1;
             }
             return true;
         } else {
