@@ -24,11 +24,11 @@ std::fstream f;
 enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
 const GAMEPLAYMODE MODE = GAME_NO_OUTPUT;
 
-
-const XYPosition landing_point = {
-	AI_VOCATION >= 2 ? 420 + rand() % 120 : 820 + rand() % 60, 
-    AI_VOCATION >= 2 ? 320 + rand() % 60 : 120 + rand() % 60
+const XYPosition LP[4] = {
+    {735, 275}, {765, 275},
+    {435, 575}, {465, 575}
 };
+const XYPosition landing_point = LP[AI_VOCATION];
 //const XYPosition landing_point = { 200 + rand() % 400, 400 + rand() % 400};
 //const XYPosition landing_point = {450, 310};
 const XYPosition destination = {450, 550};
@@ -1279,7 +1279,7 @@ bool vWalkAround() {
 
     XYPosition center = info.poison.next_center;
     if (fabs(center.x - 0.0) < 0.1 && fabs(center.y - 0.0) < 0.1) {
-        center = { 550.0, 550.0 };
+        center = { 450.0, 450.0 };
     }
 
     double alpha = 0.08 + 0.04 * (rand() % 101) / 101.0;
