@@ -25,8 +25,8 @@ enum GAMEPLAYMODE { GAME_NO_OUTPUT = 0, GAME, TEST, OTHER_MODE };
 const GAMEPLAYMODE MODE = GAME_NO_OUTPUT;
 
 const XYPosition LP[4] = {
-    {735, 275}, {765, 275},
-    {435, 575}, {465, 575}
+    {735, 350}, {755, 350},
+    {135, 250}, {155, 250}
 };
 const XYPosition landing_point = LP[AI_VOCATION];
 //const XYPosition landing_point = { 200 + rand() % 400, 400 + rand() % 400};
@@ -468,7 +468,7 @@ void play_game() {
     // Temporary
     bool decided = false;
 
-	if (!aiFirstShotFlag && vGetWeaponDurabilitySum() < 6) {
+	if (!aiFirstShotFlag && vGetWeaponDurabilitySum() < 2) {
 		if (!decided)
 			decided = vPickItem();
 	}
@@ -759,18 +759,18 @@ void vInitWeaponPriority() {
     std::vector<ITEM> temp;
     if (AI_VOCATION == SNIPER) {
         temp = {
-            FIST, TIGER_BILLOW_HAMMER,
-            CROSSBOW, HAND_GUN, 
-            SEMI_AUTOMATIC_RILE, SUBMACHINE_GUN, 
-            ASSAULT_RIFLE, MACHINE_GUN,
-            SNIPER_RILFE, SNIPER_BARRETT 
-        };
-    } else {
-        temp = {
-            FIST, TIGER_BILLOW_HAMMER,
+            FIST, TIGER_BILLOW_HAMMER, 
             CROSSBOW, HAND_GUN, 
             SEMI_AUTOMATIC_RILE, SUBMACHINE_GUN, 
             SNIPER_RILFE, SNIPER_BARRETT, 
+            ASSAULT_RIFLE, MACHINE_GUN
+        };
+    } else {
+        temp = {
+            FIST, TIGER_BILLOW_HAMMER, 
+            CROSSBOW, HAND_GUN, 
+            SNIPER_RILFE, SNIPER_BARRETT, 
+            SEMI_AUTOMATIC_RILE, SUBMACHINE_GUN, 
             ASSAULT_RIFLE, MACHINE_GUN
         };
     }
@@ -797,10 +797,10 @@ void vInitAllPriority() {
     std::vector<ITEM> temp = {
         FIST, TIGER_BILLOW_HAMMER, CROSSBOW, HAND_GUN,
         SCOPE_2, SCOPE_4, SCOPE_8, MUFFLER,
-        BONDAGE, SEMI_AUTOMATIC_RILE, SUBMACHINE_GUN,
+        BONDAGE, SEMI_AUTOMATIC_RILE, 
         VEST_1, INSULATED_CLOTHING, FIRST_AID_CASE,
-        SNIPER_RILFE, ASSAULT_RIFLE, SNIPER_BARRETT, MACHINE_GUN,
-        VEST_2, VEST_3
+        ASSAULT_RIFLE, SUBMACHINE_GUN, MACHINE_GUN,
+        SNIPER_RILFE, VEST_2, SNIPER_BARRETT, VEST_3
     };
     if (AI_VOCATION == HACK)
         temp.push_back(CODE_CASE);
@@ -833,7 +833,8 @@ int vGetWeaponDurabilitySum() {
 	for (int i = 0; i < aiWeaponCase.size(); ++i) {
 		if (aiWeaponCase[i].type != FIST && 
             aiWeaponCase[i].type != TIGER_BILLOW_HAMMER &&
-            aiWeaponCase[i].type != CROSSBOW)
+            aiWeaponCase[i].type != CROSSBOW &&
+            aiWeaponCase[i].type != HAND_GUN)
 			sum += aiWeaponCase[i].durability;
 	}
 	return sum;
@@ -1192,7 +1193,10 @@ bool vPickItem() {
             if (thisI.polar_pos.distance > distTH) continue;
 
             // 没枪优先捡枪，枪少优先捡枪
-			if (isWeapon(thisI.type) && thisI.type != TIGER_BILLOW_HAMMER) {
+			if (isWeapon(thisI.type) && 
+                thisI.type != TIGER_BILLOW_HAMMER && 
+                thisI.type != CROSSBOW && 
+                thisI.type != HAND_GUN) {
                 existweaponFlag = true;
 			}
 
@@ -1282,12 +1286,13 @@ bool vWalkAround() {
         center = { 450.0, 450.0 };
     }
 
-    double alpha = 0.08 + 0.04 * (rand() % 101) / 101.0;
-    double angleDT = 100.0;
-    double r = info.poison.next_radius * alpha;
+    double alpha = 0.08;
+    double beta = 0.20;
+    double rin = info.poison.next_radius * alpha;
+    double rout = info.poison.next_radius * beta;
     double mAngle = GetMoveAngle(info.self.xy_pos, center) - info.self.view_angle;
     double vAngle = mAngle + TURN;
-    if (vCalcDist(info.self.xy_pos, center) >= r * r) {
+    if (vCalcDist(info.self.xy_pos, center) >= rin * rin && aiPrevAct[0].msg != -5) {
         // Debug Info
         if (MODE) f << "Center: " << center.x << " " << center.y << std::endl;
         aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
@@ -1299,22 +1304,23 @@ bool vWalkAround() {
     } else {
         // Debug Info
         if (MODE) f << "Close to center.\n";
-        /*
-        aiBehavior = { Trek, mAngle - angleDT, vAngle - angleDT, 0, 0 };
-        if (MAP[GetAreaId(info.self.xy_pos, true)] != CITY) aiBehavior.msg = -1;
-        */
+
         if (vGetWeaponDurabilitySum() > 25 - frame * 4 / 100) {
             aiBehavior = { Turn, 0.0, info.self.view_angle + TURN, 0, 0 };
         } else {
-            center.x += (center.x > info.self.xy_pos.x) ? 80 : -80;
-            center.y += (center.y > info.self.xy_pos.y) ? 80 : -80;
+            center.x += cos(((rand() % 360) * M_PI / 180.0) * beta);
+            center.y += sin(((rand() % 360) * M_PI / 180.0) * beta);
             mAngle = GetMoveAngle(info.self.xy_pos, center) - info.self.view_angle;
             vAngle = mAngle + TURN;
-            aiBehavior = { Trek, mAngle, vAngle, 0, 0 };
+            aiBehavior = { Trek, mAngle, vAngle, 0, -5 };
+            if (vCalcDist(info.self.xy_pos, center) >= rout * rout)
+                aiBehavior.msg = 0;
+            /*
             if (MAP[GetAreaId(info.self.xy_pos, true)] != CITY) {
                 aiBehavior.view_angle = aiBehavior.move_angle;
                 aiBehavior.msg = -1;
             }
+            */
         }
         return true;
     }
